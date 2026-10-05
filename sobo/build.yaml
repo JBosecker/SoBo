@@ -1,8 +1,0 @@
-# Tags bei jedem Update gegen https://github.com/home-assistant/docker-base prüfen.
-build_from:
-  aarch64: ghcr.io/home-assistant/aarch64-base-python:3.13-alpine3.21
-  amd64: ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.21
-labels:
-  org.opencontainers.image.title: SoBo
-  org.opencontainers.image.description: Sonos-Jukebox als Home Assistant App
-  org.opencontainers.image.licenses: MIT

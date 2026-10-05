@@ -153,9 +153,12 @@ async def test_internal_guest_proxy_and_rotation(ctx: AppContext) -> None:
         response = await client.post("/internal/guest", content=b"{" + b" " * 5000 + b"}")
         assert response.status_code == 413
 
+        status = (await client.get("/internal/status")).json()
+        assert status["guest_access_reported"] is False
+        assert status["long_poll_timeout"] == 20
         ctx.rotation_requested = 1
         status = (await client.get("/internal/status")).json()
-        assert status["rotation_requested"] == 1
+        assert (status["rotation_requested"], status["rotation_done"]) == (1, 0)
         response = await client.post(
             "/internal/rotated",
             json={"generation": 1, "url": "https://hooks.nabu.casa/abc", "cloud_connected": True},
@@ -165,6 +168,8 @@ async def test_internal_guest_proxy_and_rotation(ctx: AppContext) -> None:
             "/internal/guest", json={"action": "state", "session": session}
         )
         assert response.status_code == 401
+        status = (await client.get("/internal/status")).json()
+        assert (status["rotation_done"], status["guest_access_reported"]) == (1, True)
     assert ctx.guest_access_view()["url"] == "https://hooks.nabu.casa/abc"
     assert ctx.guest_access_view()["rotation_pending"] is False
 

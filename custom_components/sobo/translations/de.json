@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "hassio_confirm": {
+        "title": "SoBo",
+        "description": "Home Assistant mit der App {addon} verbinden? Die Integration stellt den öffentlichen Gastzugang (QR-Code) und Entitäten bereit."
+      },
+      "user": {
+        "title": "SoBo verbinden",
+        "description": "Nur ohne Supervisor nötig (Entwicklung). Mit installierter SoBo-App wird die Verbindung automatisch eingerichtet.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "secret": "Secret"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Die SoBo-App ist nicht erreichbar.",
+      "invalid_auth": "Das Secret wurde abgelehnt."
+    },
+    "abort": {
+      "already_configured": "SoBo ist bereits eingerichtet.",
+      "single_instance_allowed": "SoBo ist bereits eingerichtet."
+    }
+  },
+  "entity": {
+    "switch": {
+      "active": {
+        "name": "Jukebox"
+      }
+    },
+    "sensor": {
+      "now_playing": {
+        "name": "Läuft gerade"
+      },
+      "queue_length": {
+        "name": "Warteschlange"
+      },
+      "active_guests": {
+        "name": "Aktive Gäste"
+      },
+      "guest_url": {
+        "name": "Gast-URL"
+      }
+    },
+    "button": {
+      "skip": {
+        "name": "Überspringen"
+      },
+      "rotate_guest_access": {
+        "name": "Gastzugang erneuern"
+      }
+    }
+  }
+}
