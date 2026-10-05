@@ -2,7 +2,7 @@ name: SoBo
 version: "0.1.0-dev"
 slug: sobo
 description: Sonos-Jukebox für Partys – Gäste wählen und voten per QR-Code
-url: https://github.com/OWNER/sobo
+url: https://github.com/JBosecker/SoBo
 arch:
   - aarch64
   - amd64
