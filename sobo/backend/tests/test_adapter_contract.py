@@ -532,3 +532,23 @@ def test_soco_apple_playlists_as_fallback_sources() -> None:
     assert sources[0].source_id == "apple_playlist:3:libraryplaylist:p.a"
     tracks = adapter.fallback_tracks(sources[0].source_id)
     assert len(tracks) == 250 and all(t.account_id == "3" for t in tracks)
+
+
+def test_library_playlists_skips_folders_apple_cannot_open() -> None:
+    from soco.exceptions import MusicServiceException
+
+    class Client(_LibraryClient):
+        def get_metadata(self, object_id: str, index: int, count: int) -> dict[str, object]:
+            if object_id == "libraryfolder:broken":
+                self.opened.append(object_id)
+                raise MusicServiceException("SOAP-ENV:Server: There was an error (HTTP 500)")
+            page = super().get_metadata(object_id, index, count)
+            if object_id == "library":
+                broken = {"id": "libraryfolder:broken", "title": "Playlists 2", "itemType": "x"}
+                page["items"] = [broken, *page["items"]]  # type: ignore[misc]
+            return page
+
+    browser = _LibraryBrowser()
+    browser.client = Client()
+    assert [title for _, title in library_playlists(browser)] == ["Abendessen", "Zeta"]
+    assert "libraryfolder:broken" in browser.client.opened

@@ -528,10 +528,20 @@ def library_playlists(browser: Any) -> list[tuple[str, str]]:
     other: dict[str, str] = {}
     pending: list[tuple[str, int]] = [("root", 0)]
     opened = 0
+    failures: list[Exception] = []
     while pending and opened < 12:
         container, depth = pending.pop(0)
         opened += 1
-        for record in _smapi_records(browser, container):
+        try:
+            records = _smapi_records(browser, container)
+        except Exception as err:
+            # Apple answers some folders with a generic server fault; keep walking.
+            if container == "root" or _is_auth_error(err):
+                raise
+            _LOG.info("Skipping Apple Music folder %s: %s", container, err)
+            failures.append(err)
+            continue
+        for record in records:
             rid = str(record.get("id") or "")
             title = str(record.get("title") or "").strip()
             item_type = str(record.get("itemType") or "").lower()
@@ -546,4 +556,6 @@ def library_playlists(browser: Any) -> list[tuple[str, str]]:
                 if any(hint in text for hint in _LIBRARY_HINTS):
                     pending.append((rid, depth + 1))
     found = library or other
+    if not found and failures:
+        raise failures[0]
     return sorted(found.items(), key=lambda item: item[1].casefold())

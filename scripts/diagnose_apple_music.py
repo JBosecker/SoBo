@@ -107,6 +107,7 @@ def check_speaker(speaker: Any, account: Any) -> None:
     step("content/root browse", lambda: _count(browser.get_metadata()))
     step("SMAPI root (household identity)", lambda: _tree(browser._client, "root"))
     step("library playlists as SoBo finds them", lambda: _library(speaker, account))
+    _walk(browser._client, "collection:view:libraryroot", depth=0)
 
     scoped = browser._scoped_client()
     refreshed = step("refreshAuthToken (scoped identity)", lambda: _refresh(scoped, acc))
@@ -134,6 +135,22 @@ def _tree(client: Any, object_id: str) -> str:
     return ", ".join(
         f"{r.get('title')!r}<{r.get('itemType')}:{r.get('id')}>" for r in page.get("items", [])
     )
+
+
+def _walk(client: Any, object_id: str, depth: int) -> None:
+    """Print the library folders (two levels, ten entries each) with errors per folder."""
+    indent = "      " + "  " * depth
+    try:
+        page = client.get_metadata(object_id, 0, 10)
+    except Exception as error:  # report and go on with the next folder
+        print(f"{indent}✗ {object_id}: {fault_text(error)}")
+        return
+    print(f"{indent}{object_id}: total={page.get('total')}")
+    for record in page.get("items", []):
+        rid, kind = record.get("id"), record.get("itemType")
+        print(f"{indent}  - {record.get('title')!r} <{kind}:{rid}>")
+        if depth < 1 and kind not in ("track", "album", "artist", "playlist"):
+            _walk(client, str(rid), depth + 1)
 
 
 def _library(speaker: Any, account: Any) -> str:
