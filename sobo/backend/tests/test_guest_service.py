@@ -287,3 +287,24 @@ def test_keyed_limiter_lru() -> None:
     assert limiter.allow("a") and not limiter.allow("a")
     assert limiter.allow("b") and limiter.allow("c")
     assert limiter.allow("a")  # "a" wurde verdrängt → neuer Bucket
+
+
+async def test_wait_respects_shorter_client_timeout(
+    service: GuestService, jukebox: Jukebox
+) -> None:
+    session = await joined(service)
+    seen: list[float] = []
+    original = jukebox.notifier.wait
+
+    async def spy(since: int, timeout: float, cancel: Any = None) -> bool:
+        seen.append(timeout)
+        return bool(await original(since, 0.01, cancel))
+
+    jukebox.notifier.wait = spy  # type: ignore[method-assign]
+    version = jukebox.notifier.version
+    await call(service, action="wait", session=session, since=version, timeout=10)
+    await call(service, action="wait", session=session, since=version, timeout=60)
+    await call(service, action="wait", session=session, since=version)
+    assert seen == [10, 20, 20]
+    status, _ = await call(service, action="wait", session=session, since=version, timeout=2)
+    assert status == 400

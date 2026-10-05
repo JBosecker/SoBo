@@ -33,6 +33,52 @@ jobs:
       - name: pip-audit
         run: uv run pip-audit --skip-editable
 
+  guest-page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Gast-Seite aktuell gebaut?
+        run: python3 scripts/build_guest_page.py --check
+      - name: Browser-Tests (Playwright/Chromium)
+        working-directory: sobo/backend
+        run: |
+          uv venv -p 3.13
+          uv pip install -e ".[dev,browser]"
+          uv run playwright install --with-deps chromium
+          uv run pytest -p anyio -q -m browser
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Abhängigkeiten
+        run: |
+          uv venv -p 3.14
+          uv pip install -r requirements_test.txt ruff
+      - name: ruff
+        run: |
+          uv run ruff check custom_components tests scripts
+          uv run ruff format --check custom_components tests scripts
+      - name: pytest
+        run: uv run pytest -q
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
+          # Icon im home-assistant/brands-Repository folgt mit dem Release
+          ignore: brands
+
   app-config:
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+<!-- Kein Referer an das Cover-CDN: die Seiten-URL ist der Zugangsschlüssel. -->
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1e2433">
+<title>Jukebox</title>
+<style>{{STYLE}}</style>
+</head>
+<body>
+<main id="app" aria-live="polite">
+
+  <section id="view-loading" class="view center">
+    <p class="quiet">Verbinde mit der Jukebox …</p>
+  </section>
+
+  <section id="view-join" class="view join" hidden>
+    <h1 class="join-title">Was soll als Nächstes laufen?</h1>
+    <p class="quiet">Such dir Songs aus, schlag sie vor und stimm für die anderer Gäste ab.</p>
+    <form id="join-form" class="join-form" autocomplete="off" novalidate>
+      <label for="join-name">Dein Name auf der Party</label>
+      <input id="join-name" name="nickname" maxlength="24" required enterkeyhint="go" autocapitalize="words">
+      <div id="join-code-row" hidden>
+        <label for="join-code">Code vom Gastgeber</label>
+        <input id="join-code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="8">
+      </div>
+      <button type="submit" class="primary">Mitmachen</button>
+      <p id="join-error" class="error" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <section id="view-off" class="view center" hidden>
+    <h1>Die Jukebox ist gerade aus.</h1>
+    <p class="quiet">Sobald der Gastgeber sie einschaltet, geht es hier weiter.</p>
+  </section>
+
+  <section id="view-main" class="view" hidden>
+    <header class="now" id="now">
+      <div class="record" aria-hidden="true">
+        <svg class="ring" viewBox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="47"/><circle id="ring" class="ring-bar" cx="50" cy="50" r="47"/></svg>
+        <div class="disc"><img id="now-art" alt="" hidden><span class="spindle"></span></div>
+      </div>
+      <div class="now-text">
+        <p class="now-label">Läuft gerade</p>
+        <h1 id="now-title">Noch nichts</h1>
+        <p id="now-artist" class="now-artist"></p>
+        <p id="next-line" class="next-line" hidden></p>
+      </div>
+    </header>
+
+    <form id="search-form" class="search" role="search" autocomplete="off">
+      <label for="search" class="visually-hidden">Song oder Interpret suchen</label>
+      <input id="search" type="search" placeholder="Song oder Interpret suchen" enterkeyhint="search" maxlength="80">
+      <button type="button" id="search-clear" class="ghost" hidden>Fertig</button>
+    </form>
+
+    <section id="results" class="results" hidden aria-label="Suchergebnisse">
+      <p id="results-note" class="quiet"></p>
+      <ul id="results-list" class="strips"></ul>
+    </section>
+
+    <section id="queue" aria-label="Warteschlange">
+      <h2 class="queue-title">Als Nächstes gewünscht</h2>
+      <p id="queue-empty" class="quiet" hidden>Noch keine Wünsche. Such oben nach einem Song und schlag ihn vor.</p>
+      <ol id="queue-list" class="strips"></ol>
+    </section>
+
+    <footer class="me">
+      <p id="me-line"></p>
+      <p id="cover-note" class="fine" hidden>Cover werden direkt von Apple geladen.</p>
+    </footer>
+  </section>
+
+  <p id="toast" class="toast" role="status" hidden></p>
+</main>
+<script>{{SCRIPT}}</script>
+</body>
+</html>
