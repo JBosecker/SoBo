@@ -8,4 +8,11 @@ export SOBO_FAKE_SONOS=1
 export SOBO_FAKE_SPEED="${SOBO_FAKE_SPEED:-10}"
 export SOBO_TRUSTED_INGRESS=127.0.0.1
 export SOBO_OPTIONS=/nonexistent
-exec python -m sobo
+if [[ -x .venv/bin/python ]]; then
+  exec .venv/bin/python -m sobo
+elif command -v uv >/dev/null 2>&1; then
+  exec uv run python -m sobo
+else
+  echo "Keine .venv gefunden. Zuerst: cd sobo/backend && uv venv && uv pip install -e '.[dev]'" >&2
+  exit 1
+fi
