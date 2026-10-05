@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sobo"
+version = "0.1.0.dev0"
+description = "SoBo – Sonos-Jukebox als Home Assistant App"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "pydantic>=2.9,<3",
+    "sqlmodel>=0.0.22,<0.1",
+    "alembic>=1.14,<2",
+    "httpx>=0.28,<1",
+    # SoCo-Fork mit Music-Services-Browser, auf einen festen Commit gepinnt (Plan 4.2)
+    "soco @ git+https://github.com/BookCatKid/SoCo-music-services-and-more.git@97dba03",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "anyio>=4.6",
+    "hypothesis>=6.115",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+[project.scripts]
+sobo = "sobo.__main__:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sobo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "ASYNC"]
+ignore = ["S101", "RUF001", "RUF002", "RUF003", "ASYNC109"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311"]
+"src/sobo/sonos/fake_adapter.py" = ["S311"]
+"src/sobo/engine/fallback.py" = ["S311"]
+"src/sobo/engine/jukebox.py" = ["S311"]
+"src/sobo/store/migrations/**" = ["E501", "I001"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["sobo"]
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["soco", "soco.*"]
+ignore_missing_imports = true

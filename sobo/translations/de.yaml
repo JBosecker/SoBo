@@ -1,0 +1,7 @@
+configuration:
+  log_level:
+    name: Log-Level
+    description: Ausführlichkeit der Protokollierung.
+  fake_sonos:
+    name: Sonos-Simulation
+    description: Nur für Entwicklung – nutzt einen simulierten Lautsprecher statt echter Sonos-Geräte.
