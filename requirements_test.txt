@@ -1,0 +1,2 @@
+# Tests der HA-Integration (custom_components/sobo)
+pytest-homeassistant-custom-component

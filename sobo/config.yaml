@@ -2,25 +2,22 @@ name: SoBo
 version: "0.1.0-dev"
 slug: sobo
 description: Sonos-Jukebox für Partys – Gäste wählen und voten per QR-Code
-url: https://github.com/OWNER/sobo
+url: https://github.com/JBosecker/SoBo
 arch:
   - aarch64
   - amd64
 init: false
-startup: application
-boot: auto
 # SSDP-Discovery der Sonos-Lautsprecher braucht das Host-Netz (Plan 4.2).
 # Kein `ports:`-Mapping: Admin nur über Ingress, Gäste nur über die Integration.
 host_network: true
 ingress: true
 ingress_port: 8737
-ingress_stream: false
 panel_icon: mdi:music-box-multiple
 panel_title: SoBo
-panel_admin: true
+# panel_admin ist standardmäßig true: Das Panel sehen nur HA-Admins (Plan 6).
+
 # Nur für die Supervisor-Discovery (Kopplung mit der Integration, Plan 3.3).
 hassio_api: true
-hassio_role: default
 discovery:
   - sobo
 options:

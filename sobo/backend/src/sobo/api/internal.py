@@ -77,6 +77,10 @@ async def status(ctx: Ctx) -> dict[str, Any]:
         "queue_length": len(jb.queue.waiting()),
         "active_guests": jb.active_guest_count(),
         "rotation_requested": ctx.rotation_requested,
+        "rotation_done": ctx.rotation_done,
+        # Nach einem App-Neustart ist die URL unbekannt → Integration meldet sie erneut.
+        "guest_access_reported": ctx.guest_access.reported_at is not None,
+        "long_poll_timeout": jb.settings.guest_access.long_poll_timeout,
         "unregister_when_inactive": jb.settings.guest_access.unregister_when_inactive,
     }
 
