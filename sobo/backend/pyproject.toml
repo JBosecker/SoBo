@@ -14,7 +14,7 @@ dependencies = [
     "uvicorn[standard]>=0.32,<1",
     "pydantic>=2.9,<3",
     "sqlmodel>=0.0.22,<0.1",
-    "alembic>=1.14,<2",
+    "alembic>=1.20.0,<2",
     "httpx>=0.28,<1",
     # SoCo-Fork mit Music-Services-Browser, auf einen festen Commit gepinnt (Plan 4.2)
     "soco @ git+https://github.com/BookCatKid/SoCo-music-services-and-more.git@97dba03",
