@@ -30,6 +30,8 @@ class SoboCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = client
         self.guest_access: GuestAccess | None = None
         self._rotating = False
+        # Zuletzt ausgeführte Rotation: dieselbe Anforderung nie zweimal ausführen.
+        self._last_rotated: int | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
@@ -53,11 +55,19 @@ class SoboCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         done = int(data.get("rotation_done") or 0)
         try:
             if requested > done and not self._rotating:
-                self._rotating = True
-                try:
-                    await guest.async_rotate(requested)
-                finally:
-                    self._rotating = False
+                if requested == self._last_rotated:
+                    # Schon rotiert, aber die Bestätigung kam nicht an: nur erneut melden.
+                    await guest.async_report_rotated(requested)
+                else:
+                    self._rotating = True
+                    try:
+                        await guest.async_rotate_only()
+                    finally:
+                        self._rotating = False
+                    # Als erledigt merken, bevor gemeldet wird: Scheitert die Meldung,
+                    # wird beim nächsten Abruf nur sie wiederholt.
+                    self._last_rotated = requested
+                    await guest.async_report_rotated(requested)
             elif not data.get("guest_access_reported"):
                 # App wurde neu gestartet und kennt die URL noch nicht.
                 await guest.async_report()
