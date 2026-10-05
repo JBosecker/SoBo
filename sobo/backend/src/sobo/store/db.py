@@ -232,7 +232,10 @@ class SqlRepository:
         with Session(self._engine) as session:
             session.add(
                 AuditRow(
-                    at=_db_time(entry.at), actor=entry.actor, action=entry.action, detail=entry.detail
+                    at=_db_time(entry.at),
+                    actor=entry.actor,
+                    action=entry.action,
+                    detail=entry.detail,
                 )
             )
             session.commit()
