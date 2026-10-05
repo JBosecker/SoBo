@@ -191,9 +191,18 @@ async def test_rotation_requested_by_app(
     assert "Was soll" not in await (await http.get(f"/api/webhook/{old_id}")).text()
     assert "Was soll" in await (await http.get(f"/api/webhook/{new_id}")).text()
 
-    # Nicht doppelt rotieren, solange die App den alten Stand meldet
+    # App meldet weiter „ausstehend“ (Bestätigung verloren): nicht erneut rotieren,
+    # sonst würden QR-Code und Sitzungen alle 5 s ungültig – nur nochmal bestätigen.
     await entry.runtime_data.coordinator.async_refresh()
-    assert client.report_rotated.await_count == 1
+    assert entry.data[CONF_WEBHOOK_ID] == new_id
+    cloud["delete"].assert_awaited_once()
+    assert client.report_rotated.await_count == 2
+    assert client.report_rotated.call_args.args[0] == 2
+
+    # Neue Anforderung → neue Rotation
+    client.status.return_value = {**STATUS, "rotation_requested": 3, "rotation_done": 2}
+    await entry.runtime_data.coordinator.async_refresh()
+    assert entry.data[CONF_WEBHOOK_ID] != new_id
 
 
 async def test_reports_url_again_after_app_restart(hass: HomeAssistant, client: AsyncMock) -> None:
@@ -246,3 +255,18 @@ async def test_setup_retries_when_app_unreachable(hass: HomeAssistant, client: A
     entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
     assert entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_rotation_not_repeated_when_report_fails(
+    hass: HomeAssistant, client: AsyncMock, cloud: dict[str, AsyncMock]
+) -> None:
+    entry = await setup_sobo(hass)
+    client.status.return_value = {**STATUS, "rotation_requested": 1, "rotation_done": 0}
+    client.report_rotated.side_effect = SoboApiError("weg")
+    await entry.runtime_data.coordinator.async_refresh()
+    rotated_id = entry.data[CONF_WEBHOOK_ID]
+    client.report_rotated.side_effect = None
+    await entry.runtime_data.coordinator.async_refresh()
+    assert entry.data[CONF_WEBHOOK_ID] == rotated_id
+    cloud["delete"].assert_awaited_once()
+    assert client.report_rotated.await_count == 2

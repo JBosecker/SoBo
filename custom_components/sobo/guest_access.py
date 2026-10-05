@@ -198,6 +198,11 @@ class GuestAccess:
         )
 
     async def async_rotate(self, generation: int) -> None:
+        """Rotieren und der App melden (z. B. per Button)."""
+        await self.async_rotate_only()
+        await self.async_report_rotated(generation)
+
+    async def async_rotate_only(self) -> None:
         """Neue Webhook-ID + neuer Cloudhook; alte QR-Codes laufen ins Leere (Plan 3.2)."""
         async with self._lock:
             old_id = self.webhook_id
@@ -206,10 +211,12 @@ class GuestAccess:
             self._set_webhook_id(webhook.async_generate_id())
             self._register()
             await self._refresh_urls()
-            await self.client.report_rotated(
-                generation, self.state.url, self.state.local_url, self.state.cloud_connected
-            )
             _LOGGER.info("Gastzugang erneuert")
+
+    async def async_report_rotated(self, generation: int) -> None:
+        await self.client.report_rotated(
+            generation, self.state.url, self.state.local_url, self.state.cloud_connected
+        )
 
     # ------------------------------------------------------------------ Anfragen
 
