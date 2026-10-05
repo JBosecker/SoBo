@@ -87,3 +87,4 @@ async def test_only_one_instance(hass: HomeAssistant, client: AsyncMock) -> None
     MockConfigEntry(domain=DOMAIN, unique_id=DOMAIN, data=ENTRY_DATA).add_to_hass(hass)
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"

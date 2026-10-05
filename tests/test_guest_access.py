@@ -37,7 +37,8 @@ async def test_get_serves_guest_page(
     html = await response.text()
     assert "Was soll als Nächstes laufen?" in html
     assert "default-src 'none'" in html
-    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Cache-Control"] == "no-store"
     # Keine HA-Interna in der Seite
     for leak in ("homeassistant", "/api/", entry.data[CONF_WEBHOOK_ID]):
         assert leak not in html
