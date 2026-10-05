@@ -336,3 +336,38 @@ def test_fake_playback_advances_with_clock() -> None:
 
 def test_fixture_account() -> None:
     assert FAKE_ACCOUNT_ID
+
+
+def test_soco_can_decrypt_the_account_envelope() -> None:
+    """Accounts arrive AES-encrypted from the speaker; the fork needs `cryptography`.
+
+    Without it, release 0.1.0 could not list the Apple Music account. This builds an
+    envelope the way Sonos does and decrypts it with the fork's own code.
+    """
+    import base64
+    import hashlib
+    import os
+
+    pytest.importorskip("soco")
+    import cryptography  # noqa: F401 – must be installed with the app (soco[music-services])
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from soco.music_services.browser import credentials
+
+    household = "Sonos_TESTHOUSEHOLD"
+    payload = (
+        b'<MediaServers><MediaServer UDN="SA_RINCON52231_X_#Svc52231-0-Token" '
+        b'SerialNum0="3" Nickname0="Party" Token0="t" Key0="k"/></MediaServers>'
+    )
+    plaintext = payload + hashlib.md5(payload).digest()[:4]  # noqa: S324 – Sonos protocol
+    iv = os.urandom(16)
+    global_key = hashlib.md5(household.encode() + credentials._ACCOUNT_SALT).digest()  # noqa: S324
+    key = hashlib.md5(iv + global_key).digest()  # noqa: S324
+    padder = padding.PKCS7(128).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+    encoded = "2:" + base64.b64encode(iv + encryptor.update(padded) + encryptor.finalize()).decode()
+
+    decrypted = credentials._decrypt_account_payload(encoded, household)
+    [account] = credentials.ConfiguredMusicServiceAccount.from_payload(decrypted)
+    assert (account.service_id, account.serial_number, account.nickname) == (204, 3, "Party")

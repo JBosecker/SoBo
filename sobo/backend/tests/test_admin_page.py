@@ -262,3 +262,15 @@ def test_unsupported_language_falls_back_to_english(
     expect(page.locator("html")).to_have_attribute("lang", "en")
     expect(page.locator("#tab-access")).to_have_text("Guest access")
     expect(page.locator("#state-pill")).to_have_text("Off")
+
+
+def test_sonos_list_errors_show_the_reason(
+    browser: Browser, harness: tuple[AdminHarness, str]
+) -> None:
+    h, url = harness
+    configure(h, active=False)
+    h.adapter.fail_calls.add("get_accounts")
+    page = open_admin(browser, url, "settings")
+    expect(page.locator("form[data-section=music]")).to_contain_text(
+        "Sonos is not responding right now. (Reason: simulated failure in get_accounts)"
+    )

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Fix: the Apple Music account was not offered ("Sonos is not responding right now").
+  Sonos sends the account list encrypted; the image now contains the `cryptography`
+  package needed to read it.
+- The admin UI shows the reason when Sonos lists cannot be loaded, and the app log
+  records it.
+
 ## 0.1.0
 
 First release.

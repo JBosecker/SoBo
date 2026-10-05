@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sobo"
-version = "0.1.0"
+version = "0.1.1"
 description = "SoBo – Sonos jukebox as a Home Assistant app"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -16,8 +16,9 @@ dependencies = [
     "sqlmodel>=0.0.22,<0.1",
     "alembic>=1.20.0,<2",
     "httpx>=0.28,<1",
-    # SoCo fork with the music services browser, pinned to a fixed commit (plan 4.2)
-    "soco @ git+https://github.com/BookCatKid/SoCo-music-services-and-more.git@97dba03",
+    # SoCo fork with the music services browser, pinned to a fixed commit (plan 4.2).
+    # The extra pulls in `cryptography`: Sonos sends the account list AES-encrypted.
+    "soco[music-services] @ git+https://github.com/BookCatKid/SoCo-music-services-and-more.git@97dba03",
 ]
 
 [project.optional-dependencies]

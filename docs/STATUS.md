@@ -116,6 +116,12 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 - Admin UI: only reachable from the ingress IP, CSP without `unsafe-inline`,
   `frame-ancestors 'self'`, `no-store`; foreign data only via `textContent`.
 
+## Findings from the first real test
+
+| Version | Finding | Fix |
+|---|---|---|
+| 0.1.0 | The Apple Music account was not offered ("Sonos is not responding right now"): Sonos sends the account list AES-encrypted and the image lacked `cryptography` | 0.1.1: dependency `soco[music-services]`, unit test with a real envelope, smoke test checks the image; the admin UI shows the reason of Sonos errors |
+
 ## Open points / risks
 
 - The HACS check only runs once the repository is public (HACS loads files without authentication).

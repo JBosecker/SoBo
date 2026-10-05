@@ -241,7 +241,8 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
         return JSONResponse({"error": exc.code}, status_code=409)
 
     @app.exception_handler(SonosError)
-    async def _sonos(_: Request, exc: SonosError) -> JSONResponse:
+    async def _sonos(request: Request, exc: SonosError) -> JSONResponse:
+        _LOG.warning("Sonos error on %s: %s", request.url.path, exc)
         return JSONResponse({"error": "sonos_unavailable", "detail": str(exc)}, status_code=503)
 
     @app.get("/", response_class=HTMLResponse)

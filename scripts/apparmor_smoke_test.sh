@@ -48,6 +48,9 @@ label="$(sudo cat /proc/"$backend_pid"/attr/current)"
 echo "backend: $label"
 [[ "$label" == "sobo//sobo_python (enforce)" ]] || { echo "backend not in sobo_python" >&2; exit 1; }
 
+# The real Sonos adapter needs these at runtime (account list is AES-encrypted).
+docker exec "$NAME" python3 -c "import soco, cryptography.hazmat.primitives.ciphers"
+
 # Configure and switch on (admin API), then a guest flow through the internal API.
 settings="$(curl -fsS http://127.0.0.1:8737/api/settings)"
 settings="$(jq '.speaker.coordinator_uid = "RINCON_FAKE_LIVING" | .account_id = "fake-apple-1"

@@ -50,6 +50,7 @@
       hours_ago: "{n} h ago",
       sonos_unavailable: "Sonos is not responding right now.",
       failed: "That did not work.",
+      reason: "(Reason: {reason})",
       no_connection: "No connection to the SoBo app.",
       override: "Something else was started in the Sonos app{what}. SoBo is waiting.",
       take_over: "Take over again",
@@ -225,6 +226,7 @@
       hours_ago: "vor {n} Std.",
       sonos_unavailable: "Sonos antwortet gerade nicht.",
       failed: "Das hat nicht geklappt.",
+      reason: "(Grund: {reason})",
       no_connection: "Keine Verbindung zur SoBo-App.",
       override: "In der Sonos-App wurde etwas anderes gestartet{what}. SoBo wartet.",
       take_over: "Wieder übernehmen",
@@ -461,6 +463,12 @@
 
   function clock(iso) {
     return new Date(iso).toLocaleString(TEXT.locale, { dateStyle: "short", timeStyle: "medium" });
+  }
+
+  /** Error text plus the technical reason from the app, for hints below a field. */
+  function errorWithReason(err) {
+    const reason = err.body && typeof err.body.detail === "string" ? err.body.detail : "";
+    return reason ? `${errorText(err)} ${t("reason", { reason })}` : errorText(err);
   }
 
   function errorText(err) {
@@ -1029,10 +1037,10 @@
     jobs.push(
       api("GET", "api/sonos/accounts")
         .then((accounts) => { lists.accounts = accounts; lists.accountsError = null; })
-        .catch((err) => { lists.accounts = []; lists.accountsError = errorText(err); }),
+        .catch((err) => { lists.accounts = []; lists.accountsError = errorWithReason(err); }),
       api("GET", "api/sonos/fallback-sources")
         .then((sources) => { lists.sources = sources; lists.sourcesError = null; })
-        .catch((err) => { lists.sources = []; lists.sourcesError = errorText(err); })
+        .catch((err) => { lists.sources = []; lists.sourcesError = errorWithReason(err); })
     );
     await Promise.all(jobs);
     refreshFields("music", ["account_id", "fallback.source_id"]);
