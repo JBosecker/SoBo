@@ -66,6 +66,10 @@ class SoboConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manuell, z. B. für Entwicklung ohne Supervisor."""
+        # Nur eine Instanz. Bewusst über die Unique-ID statt `single_config_entry`:
+        # Letzteres würde auch die Discovery abbrechen, die ein neues Secret übernimmt.
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_configured()
         errors: dict[str, str] = {}
         if user_input is not None:
             data = {
@@ -73,8 +77,6 @@ class SoboConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_PORT: user_input[CONF_PORT],
                 CONF_SECRET: user_input[CONF_SECRET],
             }
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
             error = await _validate(async_get_clientsession(self.hass), data)
             if error is None:
                 return self.async_create_entry(title=TITLE, data=data)

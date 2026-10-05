@@ -38,11 +38,11 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 # Gilt nur beim lokalen Zugriff; über den Relay ersetzt das Meta-CSP der Seite diese Header.
+# X-Frame-Options setzt HA selbst (SAMEORIGIN).
 _PAGE_HEADERS = {
     "Cache-Control": "no-store",
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
 }
 
 INACTIVE_PAGE = """<!doctype html>
