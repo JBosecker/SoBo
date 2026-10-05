@@ -1,0 +1,384 @@
+"""SonosAdapter auf Basis des SoCo-Forks mit Music-Services-Browser (Plan 4.2).
+
+Alle SoCo-Aufrufe sind hier gekapselt, damit ein Wechsel oder Update des Forks
+nur diese Datei betrifft. Die Methoden laufen ausschließlich im Sonos-Worker-Thread.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+from collections.abc import Callable, Mapping
+from typing import Any
+from urllib.parse import unquote
+
+from .adapter import (
+    FallbackSource,
+    MusicAccount,
+    PlaybackStatus,
+    SonosError,
+    SpeakerConfig,
+    SpeakerInfo,
+    Track,
+    TrackUnavailable,
+    TransportState,
+    uri_key,
+)
+
+_LOG = logging.getLogger(__name__)
+
+SERVICE_NAME = "Apple Music"
+
+_TRANSPORT_MAP = {
+    "PLAYING": TransportState.PLAYING,
+    "PAUSED_PLAYBACK": TransportState.PAUSED,
+    "STOPPED": TransportState.STOPPED,
+    "TRANSITIONING": TransportState.TRANSITIONING,
+}
+
+_CONTAINER_PREFIX = "x-rincon-cpcontainer:"
+
+
+def parse_hms(value: str | None) -> float | None:
+    """'0:03:25' → 205.0; leere oder ungültige Werte → None."""
+    if not value or value == "NOT_IMPLEMENTED":
+        return None
+    try:
+        parts = [float(p) for p in value.split(":")]
+    except ValueError:
+        return None
+    seconds = 0.0
+    for part in parts:
+        seconds = seconds * 60 + part
+    return seconds
+
+
+def explicit_flag(value: Any) -> bool | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in ("1", "true", "yes"):
+        return True
+    if text in ("0", "false", "no"):
+        return False
+    return None
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def https_or_empty(url: str) -> str:
+    return url if url.startswith("https://") else ""
+
+
+def decode_container_favorite(uri: str) -> tuple[str, int | None] | None:
+    """Zerlegt eine Favoriten-URI ``x-rincon-cpcontainer:<8 hex><id>?sid=…``.
+
+    Gibt (Container-ID, Service-ID) zurück oder None, wenn es kein Container ist.
+    """
+    if not uri.startswith(_CONTAINER_PREFIX):
+        return None
+    body, _, query = uri[len(_CONTAINER_PREFIX) :].partition("?")
+    body = unquote(body)
+    if len(body) > 8 and re.fullmatch(r"[0-9a-fA-F]{8}", body[:8]):
+        body = body[8:]
+    body = body.split("#", 1)[0]
+    sid: int | None = None
+    for pair in query.split("&"):
+        key, _, value = pair.partition("=")
+        if key == "sid":
+            sid = _as_int(value)
+    return body, sid
+
+
+def track_from_browse_item(item: Any, account_id: str) -> Track | None:
+    """MusicServiceBrowseItem → Track (nur abspielbare Titel)."""
+    raw: Mapping[str, Any] = item.raw or {}
+    item_type = str(item.item_type or raw.get("itemType", "")).rsplit(".", 1)[-1].lower()
+    if item.kind == "mediaCollection" or (item_type and item_type != "track"):
+        return None
+    meta = raw.get("trackMetadata")
+    meta = meta if isinstance(meta, Mapping) else {}
+    explicit = explicit_flag(raw.get("isExplicit", meta.get("isExplicit")))
+    return Track(
+        item_id=str(item.item_id),
+        title=str(item.title or ""),
+        artist=str(item.artist or meta.get("artist", "") or ""),
+        album=str(meta.get("album", "") or ""),
+        art_url=https_or_empty(str(item.album_art_uri or meta.get("albumArtURI", "") or "")),
+        duration=_as_int(meta.get("duration")),
+        explicit=explicit,
+        account_id=account_id,
+    )
+
+
+class SoCoAdapter:
+    def __init__(
+        self,
+        discover_fn: Callable[[], set[Any] | None] | None = None,
+        browser_factory: Callable[[Any, Any], Any] | None = None,
+        accounts_fn: Callable[[Any], list[Any]] | None = None,
+    ) -> None:
+        # Abhängigkeiten injizierbar, damit Tests ohne Netzwerk laufen.
+        self._discover_fn = discover_fn or _default_discover
+        self._browser_factory = browser_factory or _default_browser
+        self._accounts_fn = accounts_fn or _default_accounts
+        self._coordinator: Any | None = None
+        self._browsers: dict[str, Any] = {}
+        self._accounts: dict[str, Any] = {}
+
+    # -- Hilfen -------------------------------------------------------------
+
+    @property
+    def coordinator(self) -> Any:
+        if self._coordinator is None:
+            raise SonosError("Kein Lautsprecher konfiguriert")
+        return self._coordinator
+
+    def _speakers(self) -> list[Any]:
+        return list(self._discover_fn() or [])
+
+    def _browser(self, account_id: str) -> Any:
+        if account_id not in self._browsers:
+            if account_id not in self._accounts:
+                self.get_accounts()
+            account = self._accounts.get(account_id)
+            if account is None:
+                raise SonosError(f"Konto {account_id} nicht gefunden")
+            self._browsers[account_id] = self._browser_factory(self.coordinator, account)
+        return self._browsers[account_id]
+
+    def _resolve(self, track: Track) -> tuple[str, str]:
+        if track.uri:
+            return track.uri, track.meta or ""
+        from soco.exceptions import MusicServiceException
+        from soco.music_services.browser.playback import build_metadata, build_uri, resolve_item
+
+        browser = self._browser(track.account_id)
+        try:
+            item_id, item_type, mime, title = resolve_item(browser, track.item_id)
+            uri = build_uri(browser, item_id, item_type or "track", mime)
+            meta = build_metadata(
+                browser, item_id, title or track.title, item_type or "track", mime=mime, uri=uri
+            )
+        except MusicServiceException as err:
+            raise TrackUnavailable(str(err)) from err
+        return str(uri), str(meta)
+
+    def _enqueue_at_end(self, uri: str, meta: str) -> None:
+        self.coordinator.avTransport.AddURIToQueue(
+            [
+                ("InstanceID", 0),
+                ("EnqueuedURI", uri),
+                ("EnqueuedURIMetaData", meta),
+                ("DesiredFirstTrackNumberEnqueued", 0),
+                ("EnqueueAsNext", 0),
+            ]
+        )
+
+    def _remove_after_current(self) -> None:
+        coord = self.coordinator
+        info = coord.get_current_track_info()
+        position = _as_int(info.get("playlist_position")) or 0  # 1-basiert, 0 = keiner
+        size = int(coord.queue_size)
+        for index in range(size - 1, max(position, 1) - 1, -1):
+            coord.remove_from_queue(index)
+
+    # -- SonosAdapter -------------------------------------------------------
+
+    def discover(self) -> list[SpeakerInfo]:
+        result = []
+        for speaker in self._speakers():
+            group = speaker.group
+            result.append(
+                SpeakerInfo(
+                    uid=speaker.uid,
+                    name=speaker.player_name,
+                    ip=speaker.ip_address,
+                    is_coordinator=bool(speaker.is_coordinator),
+                    group_members=tuple(m.uid for m in group.members) if group else (),
+                )
+            )
+        return sorted(result, key=lambda s: s.name)
+
+    def configure(self, config: SpeakerConfig) -> None:
+        speakers = {s.uid: s for s in self._speakers()}
+        coord = speakers.get(config.coordinator_uid)
+        if coord is None:
+            raise SonosError(f"Lautsprecher {config.coordinator_uid} nicht gefunden")
+        if not coord.is_coordinator:
+            coord.unjoin()
+        for uid in config.members:
+            member = speakers.get(uid)
+            if member is None or uid == coord.uid:
+                continue
+            if member.group is None or member.group.coordinator.uid != coord.uid:
+                member.join(coord)
+        self._coordinator = coord
+        self._browsers.clear()
+        self._accounts.clear()
+
+    def get_accounts(self) -> list[MusicAccount]:
+        accounts = self._accounts_fn(self.coordinator)
+        self._accounts = {str(a.serial_number): a for a in accounts}
+        return [
+            MusicAccount(str(a.serial_number), SERVICE_NAME, str(a.nickname or ""))
+            for a in accounts
+        ]
+
+    def search_tracks(self, account_id: str, term: str, count: int) -> list[Track]:
+        from soco.exceptions import MusicServiceException
+
+        browser = self._browser(account_id)
+        try:
+            result = browser.search("tracks", term, 0, count)
+        except MusicServiceException as err:
+            raise SonosError(str(err)) from err
+        tracks = [track_from_browse_item(item, account_id) for item in result.items]
+        return [t for t in tracks if t is not None][:count]
+
+    def get_status(self) -> PlaybackStatus:
+        coord = self.coordinator
+        transport = coord.get_current_transport_info()
+        info = coord.get_current_track_info()
+        state = _TRANSPORT_MAP.get(
+            str(transport.get("current_transport_state", "")), TransportState.UNKNOWN
+        )
+        uri = str(info.get("uri") or "")
+        volume: int | None
+        try:
+            volume = int(coord.group.volume)
+        except Exception:  # Gruppenlautstärke ist optional
+            volume = None
+        return PlaybackStatus(
+            transport=state,
+            current_key=uri_key(uri) if uri else None,
+            position=parse_hms(info.get("position")),
+            duration=parse_hms(info.get("duration")),
+            volume=volume,
+            title=str(info.get("title") or ""),
+            artist=str(info.get("artist") or ""),
+        )
+
+    def play_now(self, track: Track) -> None:
+        uri, meta = self._resolve(track)
+        coord = self.coordinator
+        coord.clear_queue()
+        self._enqueue_at_end(uri, meta)
+        coord.play_from_queue(0)
+
+    def set_next(self, track: Track) -> None:
+        uri, meta = self._resolve(track)
+        self._remove_after_current()
+        self._enqueue_at_end(uri, meta)
+
+    def clear_next(self) -> None:
+        self._remove_after_current()
+
+    def skip(self) -> None:
+        from soco.exceptions import SoCoUPnPException
+
+        try:
+            self.coordinator.next()
+        except SoCoUPnPException:
+            # Kein weiterer Titel in der Sonos-Queue → anhalten; die Engine startet neu.
+            self.coordinator.stop()
+
+    def pause(self) -> None:
+        self.coordinator.pause()
+
+    def resume(self) -> None:
+        self.coordinator.play()
+
+    def set_volume(self, volume: int) -> None:
+        self.coordinator.group.volume = max(0, min(100, int(volume)))
+
+    def list_fallback_sources(self) -> list[FallbackSource]:
+        coord = self.coordinator
+        sources = [
+            FallbackSource(f"sonos_playlist:{p.item_id}", str(p.title), "sonos_playlist")
+            for p in coord.get_sonos_playlists()
+        ]
+        for fav in coord.music_library.get_sonos_favorites():
+            resources = getattr(fav, "resources", None) or []
+            uri = str(resources[0].uri) if resources else ""
+            decoded = decode_container_favorite(uri)
+            if decoded:
+                sources.append(FallbackSource(f"favorite:{decoded[0]}", str(fav.title), "favorite"))
+        return sources
+
+    def fallback_tracks(self, source_id: str) -> list[Track]:
+        kind, _, ident = source_id.partition(":")
+        if kind == "sonos_playlist":
+            return self._sonos_playlist_tracks(ident)
+        if kind == "favorite":
+            return self._service_container_tracks(ident)
+        raise SonosError(f"Unbekannte Quelle {source_id}")
+
+    def _sonos_playlist_tracks(self, playlist_id: str) -> list[Track]:
+        from soco.data_structures import to_didl_string
+
+        items = self.coordinator.music_library.browse_by_idstring(
+            "sonos_playlists", playlist_id, max_items=500
+        )
+        tracks = []
+        for item in items:
+            resources = getattr(item, "resources", None) or []
+            if not resources:
+                continue
+            uri = str(resources[0].uri)
+            tracks.append(
+                Track(
+                    item_id=uri_key(uri),
+                    title=str(getattr(item, "title", "") or ""),
+                    artist=str(getattr(item, "creator", "") or ""),
+                    album=str(getattr(item, "album", "") or ""),
+                    uri=uri,
+                    meta=to_didl_string(item),
+                )
+            )
+        return tracks
+
+    def _service_container_tracks(self, container_id: str) -> list[Track]:
+        if not self._accounts:
+            self.get_accounts()
+        if not self._accounts:
+            raise SonosError("Kein Apple-Music-Konto im Sonos-Haushalt")
+        account_id = next(iter(self._accounts))
+        browser = self._browser(account_id)
+        result = browser.get_metadata(container_id, 0, 200)
+        tracks = [track_from_browse_item(item, account_id) for item in result.items]
+        return [t for t in tracks if t is not None]
+
+    def track_key(self, track: Track) -> str:
+        return uri_key(track.uri) if track.uri else track.item_id
+
+
+# -- Standard-Abhängigkeiten (echtes SoCo) ------------------------------------
+
+
+def _default_discover() -> set[Any] | None:
+    import soco
+
+    result: set[Any] | None = soco.discover(timeout=5)
+    return result
+
+
+def _default_accounts(device: Any) -> list[Any]:
+    from soco.music_services import MusicService
+    from soco.music_services.browser import MusicServiceBrowser
+
+    service_id = int(MusicService(SERVICE_NAME, device=device).service_id)
+    return [a for a in MusicServiceBrowser.get_accounts(device) if a.service_id == service_id]
+
+
+def _default_browser(device: Any, account: Any) -> Any:
+    from soco.music_services.browser import MusicServiceBrowser
+
+    return MusicServiceBrowser(SERVICE_NAME, account=account, device=device)

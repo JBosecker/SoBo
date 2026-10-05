@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sobo/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Abhängigkeiten
+        run: |
+          uv venv
+          uv pip install -e ".[dev]" pip-audit
+      - name: ruff
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+      - name: mypy
+        run: uv run mypy src
+      - name: pytest
+        run: uv run pytest -p anyio -q
+      - name: pip-audit
+        run: uv run pip-audit --skip-editable
+
+  app-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: App-Konfiguration prüfen
+        uses: frenck/action-addon-linter@v2
+        with:
+          path: "./sobo"
+
+  build:
+    needs: [backend, app-config]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, aarch64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image bauen (ohne Push)
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --${{ matrix.arch }}
+            --target /data/sobo
+            --test
