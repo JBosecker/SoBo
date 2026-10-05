@@ -72,3 +72,44 @@ def test_apparmor_profile() -> None:
     allowed = ("/data/", "/tmp/", "/dev/null", "/dev/tty")  # noqa: S108 – profile paths
     assert writable and all(path.startswith(allowed) for path in writable), writable
     assert profile.count("{") == profile.count("}")
+
+
+ROOT = APP_DIR.parent
+
+
+def _png_size(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()[:24]
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", path
+    return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+
+
+def test_versions_agree(config: dict[str, Any]) -> None:
+    """The release workflow checks the same: tag = app = integration = backend."""
+    import json
+    import tomllib
+
+    version = config["version"]
+    manifest = json.loads((ROOT / "custom_components/sobo/manifest.json").read_text())
+    pyproject = tomllib.loads((APP_DIR / "backend/pyproject.toml").read_text())
+    assert manifest["version"] == version
+    assert pyproject["project"]["version"] == version
+    changelog = (APP_DIR / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert re.search(rf"^## {re.escape(version)}( |$)", changelog, re.MULTILINE)
+
+
+def test_prebuilt_multi_arch_image(config: dict[str, Any]) -> None:
+    # Lowercase owner (GHCR), generic name: the multi-arch manifest picks the platform.
+    assert config["image"] == "ghcr.io/jbosecker/sobo"
+    assert set(config["arch"]) == {"amd64", "aarch64"}
+
+
+def test_brand_images() -> None:
+    assert _png_size(APP_DIR / "icon.png") == (128, 128)
+    assert _png_size(APP_DIR / "logo.png") == (250, 100)
+    brand = ROOT / "custom_components/sobo/brand"
+    assert _png_size(brand / "icon.png") == (256, 256)
+    assert _png_size(brand / "icon@2x.png") == (512, 512)
+    for name in ("logo", "dark_logo"):
+        width, height = _png_size(brand / f"{name}.png")
+        assert height == 128 and width >= height
+        assert _png_size(brand / f"{name}@2x.png")[1] == 256

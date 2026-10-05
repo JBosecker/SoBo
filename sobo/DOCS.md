@@ -8,7 +8,10 @@ the language of the browser or phone.
 ## Setup
 
 1. Install and start the app.
-2. Install the SoBo integration via HACS (for guest access via QR code).
+2. Install the SoBo integration via HACS (custom repository
+   `https://github.com/JBosecker/SoBo`, category *Integration*) and restart Home
+   Assistant. The app announces itself: confirm the discovered SoBo under
+   Settings → Devices & services. It provides guest access via QR code.
 3. Open **SoBo** in the sidebar, choose the speaker, the Apple Music account and a
    base playlist, then turn the jukebox on.
 

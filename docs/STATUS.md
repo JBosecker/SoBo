@@ -12,6 +12,7 @@ As of: 2026-10-05
 | 3 – Admin UI | Admin API (status, settings, moderation, guests, audit, Sonos lists, rotation) with ingress guard and CSP; UI with live view, guest access (QR code, printing, renewal), settings, log | ✔ |
 | 4 – Integration & guest access | Guest API (sessions, rate limits, long polling); integration `custom_components/sobo`: config flow (discovery + manual), webhook/cloudhook with rotation, POST proxy, entities; guest page with long polling and fallback | ✔ |
 | 5 – Hardening | AppArmor profile (backend in a child profile without capabilities, writes only to `/data` and `/tmp`) with a CI smoke test of the real image under the profile; fuzzing of guest actions, settings and internal reports (Hypothesis); in-process load test with 100 long-polling guests and a Locust scenario; CSRF protection of the admin API; static checks of the container permissions; security checklist in [`docs/SECURITY.md`](SECURITY.md) | ✔ |
+| 6 – Release v0.1 (prepared) | Version 0.1.0 everywhere, changelog; release workflow (build per architecture, push to GHCR, multi-arch image `ghcr.io/jbosecker/sobo`, Cosign signing and verification, version check against the tag); `image` in `config.yaml`; app icon/logo and local brand images for the integration; installation instructions; release guide incl. first real test in [`docs/RELEASE.md`](RELEASE.md) | ◐ owner steps open |
 | – Language | English is the main language of the repository (code, comments, docs, commits). Admin UI, guest page, "jukebox is off" page, integration and app options are localized in English and German | ✔ |
 
 ## Tests
@@ -97,6 +98,11 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
     cannot send.
 21. **Demo data in English:** the simulated speakers are "Living Room" and "Kitchen",
     the demo playlist is "Party Basics".
+22. **Local brand images** in `custom_components/sobo/brand/` (Home Assistant 2026.3+)
+    instead of a pull request to home-assistant/brands; rendered by
+    `scripts/make_brand_images.py`.
+23. **Multi-arch image** `ghcr.io/jbosecker/sobo` (generic name, recommended since the
+    BuildKit builder) instead of `{arch}-sobo` in `config.yaml`.
 
 ## Security details
 
@@ -115,7 +121,9 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 - The HACS check only runs once the repository is public (HACS loads files without authentication).
 - Build after HA's switch to BuildKit: the base image is set in the `Dockerfile`
   (`base-python:3.13-alpine3.24`, multi-arch), `build.yaml` is gone. CI builds with
-  `home-assistant/builder/actions/build-image@2026.09.0`, for now without push and signing.
+  `home-assistant/builder/actions/build-image@2026.09.0`; CI builds without push, the
+  release workflow pushes and signs. `config.yaml` points to `ghcr.io/jbosecker/sobo`,
+  so `main` must always carry a released version (see `docs/RELEASE.md`).
 - Condensed font on the guest page: Avenir Next Condensed (iOS), otherwise Roboto
   Condensed or Arial Narrow; without these the normal system font.
 - The AppArmor profile is verified in CI on Ubuntu; on HAOS it is first exercised in the real test.
@@ -127,4 +135,8 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 
 ## Next steps
 
-- **Phase 6:** release v0.1 (publish and sign images, make the repository public, HACS).
+- **Phase 6, owner steps** (checklist in `docs/RELEASE.md`): make the repository public,
+  description and topics, publish the GitHub release `0.1.0`, set the GHCR packages to
+  public, check the `hacs` job.
+- **Then:** first real test with Sonos and Nabu Casa (not part of the plan; steps in
+  `docs/RELEASE.md`), afterwards HACS default store / community app list.

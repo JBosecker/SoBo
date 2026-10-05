@@ -1,5 +1,6 @@
 name: SoBo
-version: "0.1.0-dev"
+version: "0.1.0"
+image: ghcr.io/jbosecker/sobo
 slug: sobo
 description: Sonos party jukebox – guests suggest and vote for songs via QR code
 url: https://github.com/JBosecker/SoBo

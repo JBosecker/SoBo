@@ -84,7 +84,8 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # The icon in the home-assistant/brands repository follows with the release
+          # Brand images ship locally (custom_components/sobo/brand/, HA 2026.3+); the HACS
+          # check still looks at the home-assistant/brands repository.
           ignore: brands
 
   app-config:

@@ -10,8 +10,15 @@ bzw. Handy auf Deutsch eingestellt sind; sonst auf Englisch.
 
 ## Einrichtung
 
-1. App installieren und starten.
-2. Die SoBo-Integration über HACS installieren (für den Gastzugang per QR-Code).
+Voraussetzungen: Home Assistant OS oder Supervised, ein Sonos-System mit Apple-Music-Konto
+und für Gäste außerhalb deines WLANs Home Assistant Cloud (Nabu Casa).
+
+1. App: dieses Repository im App-Store hinzufügen (`https://github.com/JBosecker/SoBo`)
+   und **SoBo** installieren und starten.
+2. Integration: in HACS `https://github.com/JBosecker/SoBo` als benutzerdefiniertes
+   Repository (Kategorie *Integration*) hinzufügen, **SoBo** installieren, Home Assistant
+   neu starten und die gefundene SoBo-Integration unter Einstellungen → Geräte & Dienste
+   bestätigen.
 3. In der Seitenleiste **SoBo** öffnen, Lautsprecher, Apple-Music-Konto und
    Basis-Playlist wählen und die Jukebox einschalten.
 

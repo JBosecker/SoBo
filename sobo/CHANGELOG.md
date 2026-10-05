@@ -1,14 +1,18 @@
 # Changelog
 
-## 0.1.0-dev
+## 0.1.0
 
-- App skeleton (ingress, discovery, configuration)
-- Sonos adapter (SoCo fork) and simulation
-- Jukebox engine: queue, upvotes, budgets, limits, base playlist, states
-- Guest page with live updates; guest access via the SoBo integration (Nabu Casa cloudhook)
-- Admin UI: live view with moderation, guest access with QR code and print view,
-  settings, log
-- English as the main language; German localization of the admin UI, guest page,
-  "jukebox is off" page, integration and app options
-- Hardening: AppArmor profile, CSRF protection of the admin API, fuzzing and load tests,
-  security checklist (docs/SECURITY.md)
+First release.
+
+- Party jukebox for Sonos: guests scan a QR code, search Apple Music, suggest songs
+  and vote; the queue is sorted by votes, a base playlist fills the gaps
+- Admin UI in Home Assistant (ingress): live view with moderation (pin, remove,
+  block guests, skip, freeze), guest access with QR code and print view, settings
+  (speaker, maximum volume, account, base playlist, votes, rules, time window), log
+- Guest access through the SoBo integration (HACS) via a Nabu Casa cloudhook that
+  reveals nothing about your Home Assistant address; live updates by long polling
+- Entities: jukebox switch, now playing, queue length, active guests, guest URL,
+  skip and renew-guest-access buttons
+- English and German user interface (follows the browser or phone language)
+- Hardening: AppArmor profile, CSRF protection of the admin API, rate limits,
+  fuzzing and load tests; images signed with Cosign

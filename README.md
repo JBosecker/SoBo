@@ -7,6 +7,23 @@ votes; the admin controls everything via ingress in Home Assistant.
 The admin UI and the guest page are available in English and German and follow
 the browser or phone language. [Deutsche Kurzbeschreibung](README.de.md)
 
+## Installation
+
+SoBo has two parts: the **app** (runs the jukebox, admin UI) and the **integration**
+(guest access through Nabu Casa, entities). You need Home Assistant OS or Supervised,
+a Sonos system with an Apple Music account and, for guests outside your Wi-Fi,
+Home Assistant Cloud (Nabu Casa).
+
+1. App: add this repository to the app store and install **SoBo**
+   [![Add repository](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FJBosecker%2FSoBo)
+2. Integration: in HACS add `https://github.com/JBosecker/SoBo` as a custom repository
+   (category *Integration*), install **SoBo** and restart Home Assistant
+   [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JBosecker&repository=SoBo&category=integration)
+3. Start the app, confirm the discovered SoBo integration under Settings → Devices &
+   services, then open **SoBo** in the sidebar ([user guide](sobo/DOCS.md)).
+
+Releases: [`docs/RELEASE.md`](docs/RELEASE.md)
+
 Plan: [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) ·
 Status: [`docs/STATUS.md`](docs/STATUS.md) ·
 User guide: [`sobo/DOCS.md`](sobo/DOCS.md) ·

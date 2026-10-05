@@ -1,0 +1,115 @@
+name: Release
+
+# Publishing a GitHub release (tag = version, e.g. "0.1.0") builds the app images for
+# amd64 and aarch64, pushes them to GHCR, combines them into the multi-arch image
+# ghcr.io/jbosecker/sobo referenced in sobo/config.yaml and signs everything with
+# Cosign (keyless, GitHub OIDC). See docs/RELEASE.md.
+
+on:
+  release:
+    types: [published]
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: sobo
+  REGISTRY_PREFIX: ghcr.io/jbosecker
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check versions
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tag, config.yaml, manifest.json, pyproject.toml and CHANGELOG agree
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG#v}"
+          app="$(grep -E '^version:' sobo/config.yaml | cut -d'"' -f2)"
+          integration="$(jq -r .version custom_components/sobo/manifest.json)"
+          backend="$(grep -E '^version = ' sobo/backend/pyproject.toml | cut -d'"' -f2)"
+          echo "tag=${version} app=${app} integration=${integration} backend=${backend}"
+          [[ "${app}" == "${version}" && "${integration}" == "${version}" && "${backend}" == "${version}" ]] \
+            || { echo "::error::Versions do not match the tag ${TAG}"; exit 1; }
+          grep -qE "^## ${version//./\\.}( |$)" sobo/CHANGELOG.md \
+            || { echo "::error::sobo/CHANGELOG.md has no entry for ${version}"; exit 1; }
+          grep -qE "^image: ${REGISTRY_PREFIX}/${IMAGE_NAME}$" sobo/config.yaml \
+            || { echo "::error::sobo/config.yaml must reference ${REGISTRY_PREFIX}/${IMAGE_NAME}"; exit 1; }
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: check
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write # Cosign keyless signing
+      packages: write # push to GHCR
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.check.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, push and sign
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          context: ./sobo
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.check.outputs.version }}
+            latest
+          version: ${{ needs.check.outputs.version }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            io.hass.type=app
+            io.hass.name=SoBo
+            io.hass.description=Sonos jukebox as a Home Assistant app
+            io.hass.url=https://github.com/JBosecker/SoBo
+          push: "true"
+          cosign: "true"
+          skip-existing: ${{ needs.check.outputs.version }}
+
+  manifest:
+    name: Publish multi-arch image
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish and sign
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          image-tags: |
+            ${{ needs.check.outputs.version }}
+            latest
+          skip-existing: ${{ needs.check.outputs.version }}
+      - uses: sigstore/cosign-installer@v4.1.2
+      - name: Verify the signature
+        uses: home-assistant/builder/actions/cosign-verify@2026.09.0
+        with:
+          image: ${{ env.REGISTRY_PREFIX }}/${{ env.IMAGE_NAME }}:${{ needs.check.outputs.version }}
+          cosign-identity: ^https://github\.com/${{ github.repository }}/\.github/workflows/release\.yml@
