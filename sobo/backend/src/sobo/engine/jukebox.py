@@ -408,6 +408,10 @@ class Jukebox:
             self._changed()
 
     async def skip(self, actor: str) -> None:
+        async with self._lock:
+            # The next song is normally fixed shortly before the end; fix it now.
+            if self.queue.playing is not None and self.queue.next_item is None:
+                await self._fill_next(force=True)
         await self.worker.call(lambda a: a.skip())
         self._audit(actor, "skip")
         self._kick()
@@ -520,8 +524,32 @@ class Jukebox:
             return True
         return False
 
-    async def _fill_next(self) -> None:
-        """Make sure exactly the right next track follows the current one."""
+    def _remaining(self, current: QueueItem, status: PlaybackStatus | None) -> float | None:
+        """Seconds left of the current track (None if unknown)."""
+        if (
+            status is not None
+            and status.current_key == self.key(current)
+            and status.duration
+            and status.position is not None
+        ):
+            return max(0.0, status.duration - status.position)
+        if current.track.duration and current.started_at is not None:
+            elapsed = (self._now() - current.started_at).total_seconds()
+            return max(0.0, current.track.duration - elapsed)
+        return None
+
+    def _next_due(self, current: QueueItem, status: PlaybackStatus | None) -> bool:
+        """Is it time to fix the next track? Unknown length: right away."""
+        remaining = self._remaining(current, status)
+        return remaining is None or remaining <= self.settings.votes.lock_next_seconds
+
+    async def _fill_next(self, status: PlaybackStatus | None = None, force: bool = False) -> None:
+        """Make sure the right next track follows the current one.
+
+        The next track is fixed only `lock_next_seconds` before the current one ends
+        (plan 5.1, changed after the first real test): until then it stays in the
+        queue and guests can still vote it up or down the ranking.
+        """
         current = self.queue.playing
         if current is None:
             return
@@ -537,6 +565,11 @@ class Jukebox:
         if nxt is not None:
             self._unset_next(nxt)
         self._next_dirty = False
+        if not (force or self._next_due(current, status)):
+            if had_next:
+                await self.worker.call(lambda a: a.clear_next())
+                self._changed()
+            return
 
         exclude = {self.key(current)}
         for _ in range(MAX_ENQUEUE_ATTEMPTS):
@@ -669,7 +702,7 @@ class Jukebox:
                 self._set_state(JukeboxState.PAUSED)
             else:
                 self._set_state(self._playing_state())
-            await self._fill_next()
+            await self._fill_next(status)
             return
 
         if nxt is not None and key is not None and key == self.key(nxt):
@@ -677,7 +710,7 @@ class Jukebox:
             self._finish(current, ItemState.PLAYED)
             self._mark_playing(nxt)
             self._changed()
-            await self._fill_next()
+            await self._fill_next(status)
             self._set_state(self._playing_state())
             return
 

@@ -24,6 +24,10 @@ the language of the browser or phone.
   copy the link, renew guest access. After renewing, old QR codes stop working.
 - **Settings:** speaker and maximum volume, Apple Music account, base playlist,
   votes, rules for requests, time window.
+
+The next song is fixed only shortly before the current one ends (30 seconds by default,
+**Settings → Votes**). Until then guests can still vote, and the leading request moves
+up; once fixed, it is handed to Sonos so the transition is seamless.
 - **Log:** who changed what and when.
 
 ## Options

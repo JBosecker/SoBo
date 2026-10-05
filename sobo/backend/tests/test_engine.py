@@ -27,8 +27,20 @@ async def apply(jb: Jukebox, **overrides: object) -> None:
     await jb.update_settings(active_settings(**overrides), "admin")
 
 
+async def near_end(jb: Jukebox, fake: FakeSonosAdapter, clock: ManualClock) -> None:
+    """Fast-forward into the lock window before the end: the next track gets fixed."""
+    status = fake.get_status()
+    assert status.duration is not None and status.position is not None
+    remaining = status.duration - status.position
+    lock = jb.settings.votes.lock_next_seconds
+    if remaining > lock - 5:
+        clock.advance(remaining - (lock - 5))
+    await jb.tick()
+
+
 async def finish_current(jb: Jukebox, fake: FakeSonosAdapter, clock: ManualClock) -> None:
-    """Fast-forward to just after the end of the playing track and let the engine react."""
+    """Play to just after the end of the current track (fixing the next one on the way)."""
+    await near_end(jb, fake, clock)
     status = fake.get_status()
     assert status.duration is not None and status.position is not None
     clock.advance(status.duration - status.position + 1)
@@ -59,11 +71,15 @@ async def test_missing_speaker_is_error(jukebox: Jukebox) -> None:
     assert jukebox.last_error == "no_speaker"
 
 
-async def test_fallback_plays_when_queue_empty(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
+async def test_fallback_plays_when_queue_empty(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
     await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
     await jukebox.tick()
     assert jukebox.state == JukeboxState.PLAYING_FALLBACK
-    assert fake.queue[0].title == "Neon Harbor"
+    assert [t.title for t in fake.queue] == ["Neon Harbor"]
+    assert jukebox.queue.next_item is None  # chosen only shortly before the end
+    await near_end(jukebox, fake, clock)
     assert fake.queue[1].title == "Paper Satellites"
     assert jukebox.queue.next_item is not None
     assert jukebox.queue.next_item.origin == Origin.FALLBACK
@@ -84,16 +100,19 @@ async def test_guest_suggestion_starts_playback(jukebox: Jukebox, fake: FakeSono
 
 
 async def test_ranking_picks_most_votes_when_next_is_chosen(
-    jukebox: Jukebox, fake: FakeSonosAdapter
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
 ) -> None:
     a, b, c = (make_guest(jukebox, n) for n in "ABC")
     await suggest_title(jukebox, a, "Slow Comet")
     await jukebox.tick()
-    # No tick between the suggestions: both are waiting at the same time.
     low = await suggest_title(jukebox, a, "Velvet Engine")
     high = await suggest_title(jukebox, b, "Copper Sky")
     await jukebox.vote(c, high.id)
     await jukebox.tick()
+    # Long before the end nothing is fixed: both are still in the queue.
+    assert jukebox.queue.next_item is None
+    assert [i.id for i in jukebox.queue.waiting()] == [high.id, low.id]
+    await near_end(jukebox, fake, clock)
     assert jukebox.queue.next_item is high
     assert low.state == ItemState.QUEUED
     # Fixed: more votes for `low` no longer change the next track.
@@ -114,11 +133,15 @@ async def test_transition_to_next_and_refill(
     first = await suggest_title(jukebox, g, "Slow Comet")
     second = await suggest_title(jukebox, g, "Gravity Lessons")
     await jukebox.tick()
-    assert first.state == ItemState.PLAYING and second.state == ItemState.NEXT
+    assert first.state == ItemState.PLAYING and second.state == ItemState.QUEUED
+    await near_end(jukebox, fake, clock)
+    assert second.state == ItemState.NEXT
     third = await suggest_title(jukebox, g, "Sunday Static")
     await finish_current(jukebox, fake, clock)
     assert first.state == ItemState.PLAYED
     assert second.state == ItemState.PLAYING
+    assert third.state == ItemState.QUEUED
+    await near_end(jukebox, fake, clock)
     assert third.state == ItemState.NEXT
     assert [t.item_id for t in fake.queue[fake.index :]] == [
         second.track.item_id,
@@ -141,9 +164,12 @@ async def test_queue_runs_out_then_new_suggestion_restarts(
     assert fake.get_status().transport == TransportState.PLAYING
 
 
-async def test_guest_track_preempts_fallback_next(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
+async def test_guest_track_preempts_fallback_next(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
     await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
     await jukebox.tick()
+    await near_end(jukebox, fake, clock)
     fallback_next = jukebox.queue.next_item
     assert fallback_next is not None and fallback_next.origin == Origin.FALLBACK
     g = make_guest(jukebox)
@@ -154,7 +180,9 @@ async def test_guest_track_preempts_fallback_next(jukebox: Jukebox, fake: FakeSo
     assert fake.queue[-1].item_id == item.track.item_id
 
 
-async def test_unavailable_track_is_skipped(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
+async def test_unavailable_track_is_skipped(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
     g, h = make_guest(jukebox, "G"), make_guest(jukebox, "H")
     await suggest_title(jukebox, g, "Slow Comet")
     await jukebox.tick()
@@ -162,7 +190,7 @@ async def test_unavailable_track_is_skipped(jukebox: Jukebox, fake: FakeSonosAda
     await jukebox.vote(h, broken.id)
     ok = await suggest_title(jukebox, h, "Velvet Engine")
     fake.unavailable_ids.add(broken.track.item_id)
-    await jukebox.tick()
+    await near_end(jukebox, fake, clock)
     assert broken.state == ItemState.REMOVED
     assert broken.removed_reason == "unavailable"
     assert jukebox.queue.next_item is ok
@@ -376,12 +404,15 @@ async def test_start_volume_applied_once(jukebox: Jukebox, fake: FakeSonosAdapte
     assert fake.volume == 40
 
 
-async def test_admin_removes_next(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
+async def test_admin_removes_next(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
     g = make_guest(jukebox)
     await suggest_title(jukebox, g, "Slow Comet")
     nxt = await suggest_title(jukebox, g, "Copper Sky")
     later = await suggest_title(jukebox, g, "Velvet Engine")
     await jukebox.tick()
+    await near_end(jukebox, fake, clock)
     assert jukebox.queue.next_item is nxt
     await jukebox.remove_item(nxt.id, "admin")
     await jukebox.tick()
@@ -459,7 +490,8 @@ async def test_reload_restores_queue_and_votes(
     await jukebox.tick()
     queued = await suggest_title(jukebox, a, "Copper Sky")
     await jukebox.vote(b, queued.id)
-    await jukebox.tick()
+    await near_end(jukebox, fake, clock)
+    assert queued.state == ItemState.NEXT
 
     restarted = Jukebox(SonosWorker(fake), repo, clock, rng=random.Random(1))
     restored = restarted.queue.get(queued.id)
@@ -565,3 +597,43 @@ async def test_rejected_music_sign_in_is_reported(
     monkeypatch.setattr(fake, "search_tracks", original)
     assert await jukebox.search(guest, "neon")
     assert jukebox.service_error is None
+
+
+async def test_votes_change_the_next_track_until_shortly_before_the_end(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    a, b, c, d, e = (make_guest(jukebox, n) for n in "ABCDE")
+    await suggest_title(jukebox, a, "Slow Comet")
+    await jukebox.tick()
+    early = await suggest_title(jukebox, a, "Velvet Engine")
+    late = await suggest_title(jukebox, b, "Copper Sky")
+    await jukebox.tick()
+    # Tie → the earlier suggestion leads, but nothing is fixed or handed to Sonos yet.
+    assert jukebox.queue.waiting()[0] is early
+    assert jukebox.queue.next_item is None
+    assert fake.queue[fake.index + 1 :] == []
+    # While the first song plays, a vote still moves the later suggestion ahead.
+    await jukebox.vote(c, late.id)
+    await near_end(jukebox, fake, clock)
+    assert jukebox.queue.next_item is late
+    assert fake.queue[-1].item_id == late.track.item_id
+    # Inside the lock window the choice is final.
+    await jukebox.vote(d, early.id)
+    await jukebox.vote(e, early.id)
+    await jukebox.tick()
+    assert jukebox.queue.next_item is late
+
+
+async def test_skip_fixes_the_next_track_first(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    g = make_guest(jukebox)
+    first = await suggest_title(jukebox, g, "Slow Comet")
+    second = await suggest_title(jukebox, g, "Copper Sky")
+    await jukebox.tick()
+    assert jukebox.queue.next_item is None
+    await jukebox.skip("admin")
+    clock.advance(1)
+    await jukebox.tick()
+    assert first.state == ItemState.PLAYED
+    assert second.state == ItemState.PLAYING

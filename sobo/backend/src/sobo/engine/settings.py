@@ -27,6 +27,9 @@ class VoteSettings(_Model):
     votes_per_window: int = Field(default=5, ge=1, le=100)
     window_minutes: int = Field(default=30, ge=1, le=24 * 60)
     suggestion_costs_vote: bool = True
+    # The next song is fixed (and handed to Sonos) only this long before the current
+    # one ends; until then votes still decide what comes next.
+    lock_next_seconds: int = Field(default=30, ge=5, le=600)
 
 
 class LimitSettings(_Model):

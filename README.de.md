@@ -32,6 +32,10 @@ und für Gäste außerhalb deines WLANs Home Assistant Cloud (Nabu Casa).
   Link kopieren, Gastzugang erneuern. Nach dem Erneuern funktionieren alte QR-Codes nicht mehr.
 - **Einstellungen:** Lautsprecher und Höchstlautstärke, Apple-Music-Konto,
   Basis-Playlist, Stimmen, Regeln für Wünsche, Zeitfenster.
+
+Der nächste Song wird erst kurz vor dem Ende des laufenden festgelegt (standardmäßig
+30 Sekunden, **Einstellungen → Stimmen**). Bis dahin können Gäste noch abstimmen und
+den nächsten Song beeinflussen.
 - **Protokoll:** Wer hat wann was geändert.
 
 ## Sicherheit

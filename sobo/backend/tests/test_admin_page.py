@@ -155,8 +155,10 @@ def test_live_moderation(browser: Browser, harness: tuple[AdminHarness, str]) ->
     guest_wishes(h, "Tom", "velvet")
     page = open_admin(browser, url)
     queue = page.locator("#queue li")
-    expect(queue).to_have_count(2, timeout=8000)  # one of them is already "up next"
-    expect(page.locator("#next-line")).to_contain_text("Requested by Mia")
+    # The next song is only fixed shortly before the end: all three are still open.
+    expect(queue).to_have_count(3, timeout=8000)
+    expect(page.locator("#next-line")).to_contain_text("chosen by the votes")
+    expect(queue.first).to_contain_text("Requested by Mia")
 
     strip = queue.filter(has_text="Velvet Engine")
     strip.get_by_role("button", name="Pin").click()
@@ -164,7 +166,7 @@ def test_live_moderation(browser: Browser, harness: tuple[AdminHarness, str]) ->
     expect(queue.first).to_contain_text("Velvet Engine")
 
     queue.filter(has_text="Copper Sky").get_by_role("button", name="Remove Copper Sky").click()
-    expect(queue).to_have_count(1)
+    expect(queue).to_have_count(2)
     expect(page.locator("#toast")).to_have_text("Removed.")
 
     tom = page.locator("#guests li", has_text="Tom")
@@ -176,8 +178,9 @@ def test_live_moderation(browser: Browser, harness: tuple[AdminHarness, str]) ->
     expect(page.locator("#freeze")).to_have_attribute("aria-pressed", "true")
     assert h.ctx.jukebox.frozen
 
+    # Skipping fixes the next song first: the pinned one wins.
     page.click("#skip")
-    expect(page.locator("#now-title")).to_have_text("Slow Comet", timeout=8000)
+    expect(page.locator("#now-title")).to_have_text("Velvet Engine", timeout=8000)
     page.click("#tab-log")
     expect(page.locator("#log")).to_contain_text("Song skipped")
     expect(page.locator("#log")).to_contain_text("Guest blocked")
@@ -241,7 +244,7 @@ def test_german_localization(browser: Browser, harness: tuple[AdminHarness, str]
     expect(page.locator("html")).to_have_attribute("lang", "de")
     expect(page.locator("#tab-access")).to_have_text("Gastzugang")
     expect(page.locator("#state-pill")).to_have_text(re.compile(r"^Spielt "), timeout=8000)
-    expect(page.locator("#next-line")).to_contain_text("Wunsch von Mia")
+    expect(page.locator("#queue li").first).to_contain_text("Wunsch von Mia")
     expect(page.get_by_role("button", name="Copper Sky entfernen")).to_be_visible()
     page.click("#tab-settings")
     expect(page.locator("form[data-section=speaker] h2")).to_have_text("Lautsprecher")

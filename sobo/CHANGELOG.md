@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- The next song is no longer fixed as soon as the current one starts. It stays in the
+  queue, guests can keep voting, and SoBo fixes the leading request only shortly before
+  the end (new setting **Votes → Fix the next song this many seconds before the end**,
+  default 30 s). Skipping fixes the next song right away.
+- The admin UI explains that the next song is still open.
+
 ## 0.1.3
 
 - Fix: Apple Music search failed with `AuthTokenExpired` for accounts stored without an

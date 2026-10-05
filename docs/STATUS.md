@@ -103,6 +103,10 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
     `scripts/make_brand_images.py`.
 23. **Multi-arch image** `ghcr.io/jbosecker/sobo` (generic name, recommended since the
     BuildKit builder) instead of `{arch}-sobo` in `config.yaml`.
+24. **Next track fixed late** (changed after the first real test, plan 5.1 fixed it
+    when the current track starts): the next track is chosen and handed to Sonos only
+    `votes.lock_next_seconds` (default 30 s) before the end, so votes keep influencing it
+    until then. Unknown durations fix it immediately; skipping fixes it first.
 
 ## Security details
 
@@ -123,6 +127,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.1.0 | The Apple Music account was not offered ("Sonos is not responding right now"): Sonos sends the account list AES-encrypted and the image lacked `cryptography` | 0.1.1: dependency `soco[music-services]`, unit test with a real envelope, smoke test checks the image; the admin UI shows the reason of Sonos errors |
 | 0.1.1 | Search failed with `Client.AuthTokenExpired` (`InvalidTokenException`): Apple rejected the sign-in read from the household, even after the fork's token refresh | 0.1.2: re-read the household credentials and retry once; if still rejected, banner with re-authorization hint and a log line describing the stored sign-in (open: confirm on the real system) |
 | 0.1.2 | Still `AuthTokenExpired`. `scripts/diagnose_apple_music.py` on the real household: the account UDN carries the UID 0, the fork's account-scoped identity `<household>_00000000` is rejected by Apple, the plain household identity works for search and token refresh on every speaker | 0.1.3: plain household identity for accounts without a UID (`use_household_identity_if_unscoped`); report to the fork |
+| 0.1.3 | Feedback: the next song disappeared from the queue as soon as the current one started and could no longer be influenced | 0.2.0: next song fixed only shortly before the end (setting, default 30 s) |
 
 ## Open points / risks
 
