@@ -7,10 +7,19 @@ cd "$(dirname "$0")/.."
 
 IMAGE="${IMAGE:-sobo-apparmor-test}"
 DATA="$(mktemp -d)"
+# Like the Supervisor: /data belongs to root. The backend profile grants no
+# capabilities (no dac_override), so root could not use a runner-owned 0700 folder.
+sudo chown root:root "$DATA"
+sudo chmod 0755 "$DATA"
 NAME="sobo-apparmor-$$"
 
+since=""
 cleanup() {
   docker logs "$NAME" 2>&1 | tail -n 40 || true
+  if [[ -n "$since" ]]; then
+    echo "--- AppArmor messages:"
+    sudo journalctl -k --since "$since" --no-pager | grep 'apparmor=' | grep 'sobo' || echo "(none)"
+  fi
   docker rm -f "$NAME" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
