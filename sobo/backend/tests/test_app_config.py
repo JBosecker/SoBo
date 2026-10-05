@@ -56,7 +56,13 @@ def test_admin_only_through_ingress(config: dict[str, Any]) -> None:
 def test_apparmor_profile() -> None:
     profile = APPARMOR.read_text(encoding="utf-8")
     assert re.search(r"^profile sobo flags=", profile, re.MULTILINE)
-    assert "/usr/local/bin/python3* cx -> sobo_python" in profile
+    # Exact path: `file,` in the outer profile grants `ix` everywhere, and only an exact
+    # rule may override it ("conflicting x modifiers" otherwise).
+    transition = re.search(r"^\s*(\S+) cx -> sobo_python,", profile, re.MULTILINE)
+    assert transition and "*" not in transition.group(1)
+    dockerfile = (APP_DIR / "Dockerfile").read_text(encoding="utf-8")
+    python = re.search(r"base-python:(\d+\.\d+)-", dockerfile)
+    assert python and transition.group(1) == f"/usr/local/bin/python{python.group(1)}"
     child = profile[profile.index("profile sobo_python") :]
     # The backend profile has no capabilities, no blanket file access and may write
     # only to /data and /tmp.
