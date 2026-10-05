@@ -8,7 +8,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
@@ -173,9 +173,13 @@ async def accounts(ctx: Ctx) -> list[dict[str, str]]:
 
 
 @router.get("/sonos/fallback-sources")
-async def fallback_sources(ctx: Ctx) -> list[dict[str, str]]:
+async def fallback_sources(
+    ctx: Ctx, account_id: Annotated[str | None, Query(max_length=64)] = None
+) -> list[dict[str, str]]:
+    """Base playlist candidates; `account_id` lets the UI list them before saving."""
     await ctx.jukebox.ensure_speaker()
-    found = await ctx.worker.call(lambda a: a.list_fallback_sources(), timeout=15)
+    account = account_id or ctx.jukebox.settings.account_id
+    found = await ctx.worker.call(lambda a: a.list_fallback_sources(account), timeout=30)
     return [{"source_id": s.source_id, "name": s.name, "kind": s.kind} for s in found]
 
 

@@ -96,6 +96,8 @@
       no_other_speakers: "No other speakers found.",
       no_apple_account: "No Apple Music account found in the Sonos household.",
       favorite: "{name} (favourite)",
+      loading_playlists: "Loading playlists …",
+      no_playlists: "No playlists found in this account's library.",
       none: "None",
       save: "Save",
       saving: "Saving …",
@@ -141,7 +143,7 @@
         "speaker.start_volume": ["Start volume", "Applied when turning on. Leave empty to keep the volume."],
         "speaker.max_volume": ["Maximum volume", "If someone turns it up further, SoBo turns it down again."],
         account_id: ["Apple Music account"],
-        "fallback.source_id": ["Base playlist", "Plays while there are no requests."],
+        "fallback.source_id": ["Base playlist", "A playlist from the Apple Music library of the chosen account. Plays while there are no requests."],
         "fallback.shuffle": ["Shuffle the base playlist"],
         "votes.votes_per_window": ["Votes per guest"],
         "votes.window_minutes": ["Period in minutes", "A used vote comes back after this time."],
@@ -274,6 +276,8 @@
       no_other_speakers: "Keine weiteren Lautsprecher gefunden.",
       no_apple_account: "Kein Apple-Music-Konto im Sonos-Haushalt gefunden.",
       favorite: "{name} (Favorit)",
+      loading_playlists: "Playlists werden geladen …",
+      no_playlists: "In der Mediathek dieses Kontos gibt es keine Playlists.",
       none: "Keine",
       save: "Speichern",
       saving: "Speichert …",
@@ -319,7 +323,7 @@
         "speaker.start_volume": ["Startlautstärke", "Beim Einschalten. Leer lassen, um die Lautstärke nicht zu ändern."],
         "speaker.max_volume": ["Maximale Lautstärke", "Wird höher gedreht, regelt SoBo wieder herunter."],
         account_id: ["Apple-Music-Konto"],
-        "fallback.source_id": ["Basis-Playlist", "Läuft, solange keine Wünsche da sind."],
+        "fallback.source_id": ["Basis-Playlist", "Eine Playlist aus der Apple-Music-Mediathek des gewählten Kontos. Läuft, solange keine Wünsche da sind."],
         "fallback.shuffle": ["Basis-Playlist zufällig abspielen"],
         "votes.votes_per_window": ["Stimmen pro Gast"],
         "votes.window_minutes": ["Zeitraum in Minuten", "Eine verbrauchte Stimme kommt nach dieser Zeit zurück."],
@@ -894,7 +898,9 @@
       }
       case "source": {
         const sources = lists.sources || [];
-        return wrap("", el("label", { for: id, text: label }), el("select", { id, "aria-describedby": describedBy }, options(sources.map((s) => ({ value: s.source_id, label: s.kind === "favorite" ? t("favorite", { name: s.name }) : s.name })), value, t("none"))), lists.sourcesError ? el("p", { class: "help", text: lists.sourcesError }) : help, error);
+        const empty = lists.sources ? t("none") : t("loading_playlists");
+        const hint = lists.sourcesError || (lists.sources && !sources.length ? t("no_playlists") : null);
+        return wrap("", el("label", { for: id, text: label }), el("select", { id, "aria-describedby": describedBy }, options(sources.map((s) => ({ value: s.source_id, label: s.kind === "favorite" ? t("favorite", { name: s.name }) : s.name })), value, empty)), hint ? el("p", { class: "help", text: hint }) : help, error);
       }
       default:
         throw new Error("Unknown field type " + field.type);
@@ -940,6 +946,7 @@
       saveSection(name, form, status);
     };
     if (name === "speaker") bindCoordinatorChange(form);
+    if (name === "music") bindAccountChange();
   }
 
   /** Rebuild individual fields only (e.g. when lists arrive) – other inputs stay as they are. */
@@ -951,6 +958,7 @@
       if (current) current.replaceWith(renderField(field));
     }
     if (name === "speaker") bindCoordinatorChange(form);
+    if (name === "music") bindAccountChange();
   }
 
   function bindCoordinatorChange(form) {
@@ -1045,12 +1053,36 @@
       api("GET", "api/sonos/accounts")
         .then((accounts) => { lists.accounts = accounts; lists.accountsError = null; })
         .catch((err) => { lists.accounts = []; lists.accountsError = errorWithReason(err); }),
-      api("GET", "api/sonos/fallback-sources")
-        .then((sources) => { lists.sources = sources; lists.sourcesError = null; })
-        .catch((err) => { lists.sources = []; lists.sourcesError = errorWithReason(err); })
+      loadSources(settings.account_id)
     );
     await Promise.all(jobs);
-    refreshFields("music", ["account_id", "fallback.source_id"]);
+    refreshFields("music", ["account_id"]);
+  }
+
+  /** Base playlist candidates: the playlists of the given Apple Music account. */
+  let sourcesRequest = 0;
+  async function loadSources(accountId) {
+    const request = ++sourcesRequest;
+    lists.sources = null;
+    lists.sourcesError = null;
+    refreshFields("music", ["fallback.source_id"]);
+    const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
+    try {
+      const sources = await api("GET", `api/sonos/fallback-sources${query}`);
+      if (request !== sourcesRequest) return;
+      lists.sources = sources;
+    } catch (err) {
+      if (request !== sourcesRequest) return;
+      lists.sources = [];
+      lists.sourcesError = errorWithReason(err);
+    }
+    refreshFields("music", ["fallback.source_id"]);
+  }
+
+  function bindAccountChange() {
+    const select = $(fieldId("account_id"));
+    // Property instead of addEventListener: fields are re-rendered, never doubled.
+    if (select) select.onchange = (event) => loadSources(event.target.value || null);
   }
 
   // ------------------------------------------------------------------ log

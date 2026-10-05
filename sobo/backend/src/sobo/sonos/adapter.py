@@ -94,7 +94,7 @@ class MusicAccount:
 class FallbackSource:
     source_id: str
     name: str
-    kind: str  # "sonos_playlist" | "favorite"
+    kind: str  # "apple_playlist" (current) | "sonos_playlist" | "favorite" (older settings)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +140,9 @@ class SonosAdapter(Protocol):
 
     def set_volume(self, volume: int) -> None: ...
 
-    def list_fallback_sources(self) -> list[FallbackSource]: ...
+    def list_fallback_sources(self, account_id: str | None) -> list[FallbackSource]:
+        """Playlists of the music account that can serve as base playlist."""
+        ...
 
     def fallback_tracks(self, source_id: str) -> list[Track]: ...
 

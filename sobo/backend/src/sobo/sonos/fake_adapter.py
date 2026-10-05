@@ -197,10 +197,12 @@ class FakeSonosAdapter:
         self._record("set_volume")
         self.volume = max(0, min(100, int(volume)))
 
-    def list_fallback_sources(self) -> list[FallbackSource]:
+    def list_fallback_sources(self, account_id: str | None) -> list[FallbackSource]:
         self._record("list_fallback_sources")
+        if not account_id:
+            return []
         return [
-            FallbackSource(sid, name, "sonos_playlist") for sid, (name, _) in self.playlists.items()
+            FallbackSource(sid, name, "apple_playlist") for sid, (name, _) in self.playlists.items()
         ]
 
     def fallback_tracks(self, source_id: str) -> list[Track]:

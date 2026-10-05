@@ -7,6 +7,9 @@
   the end (new setting **Votes → Fix the next song this many seconds before the end**,
   default 30 s). Skipping fixes the next song right away.
 - The admin UI explains that the next song is still open.
+- Base playlist: choose one of the playlists in the Apple Music library of the selected
+  account (instead of Sonos playlists and favourites). The list updates when you pick
+  another account. Base playlists chosen earlier keep working.
 
 ## 0.1.3
 

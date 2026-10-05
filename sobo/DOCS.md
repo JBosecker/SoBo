@@ -22,8 +22,9 @@ the language of the browser or phone.
   else is started in the Sonos app, SoBo waits until you choose "Take over again".
 - **Guest access:** a QR code to put up (use "Print QR code" for an A4 sheet or a PDF),
   copy the link, renew guest access. After renewing, old QR codes stop working.
-- **Settings:** speaker and maximum volume, Apple Music account, base playlist,
-  votes, rules for requests, time window.
+- **Settings:** speaker and maximum volume, Apple Music account, base playlist (a
+  playlist from that account's Apple Music library), votes, rules for requests, time
+  window.
 
 The next song is fixed only shortly before the current one ends (30 seconds by default,
 **Settings → Votes**). Until then guests can still vote, and the leading request moves

@@ -30,6 +30,7 @@ _LOG = logging.getLogger(__name__)
 T = TypeVar("T")
 
 SERVICE_NAME = "Apple Music"
+MAX_FALLBACK_TRACKS = 500
 
 _TRANSPORT_MAP = {
     "PLAYING": TransportState.PLAYING,
@@ -333,22 +334,29 @@ class SoCoAdapter:
     def set_volume(self, volume: int) -> None:
         self.coordinator.group.volume = max(0, min(100, int(volume)))
 
-    def list_fallback_sources(self) -> list[FallbackSource]:
-        coord = self.coordinator
-        sources = [
-            FallbackSource(f"sonos_playlist:{p.item_id}", str(p.title), "sonos_playlist")
-            for p in coord.get_sonos_playlists()
+    def list_fallback_sources(self, account_id: str | None) -> list[FallbackSource]:
+        """The playlists in the Apple Music library of the chosen account."""
+        if not account_id:
+            return []
+        from soco.exceptions import MusicServiceException
+
+        try:
+            playlists = self._with_browser(account_id, library_playlists)
+        except MusicServiceAuthError:
+            raise
+        except MusicServiceException as err:
+            raise SonosError(str(err)) from err
+        return [
+            FallbackSource(f"apple_playlist:{account_id}:{pid}", title, "apple_playlist")
+            for pid, title in playlists
         ]
-        for fav in coord.music_library.get_sonos_favorites():
-            resources = getattr(fav, "resources", None) or []
-            uri = str(resources[0].uri) if resources else ""
-            decoded = decode_container_favorite(uri)
-            if decoded:
-                sources.append(FallbackSource(f"favorite:{decoded[0]}", str(fav.title), "favorite"))
-        return sources
 
     def fallback_tracks(self, source_id: str) -> list[Track]:
         kind, _, ident = source_id.partition(":")
+        if kind == "apple_playlist":
+            account_id, _, container = ident.partition(":")
+            return self._container_tracks(account_id, container)
+        # Sources chosen with SoBo < 0.2 (Sonos playlists and favourites) keep working.
         if kind == "sonos_playlist":
             return self._sonos_playlist_tracks(ident)
         if kind == "favorite":
@@ -384,9 +392,29 @@ class SoCoAdapter:
             self.get_accounts()
         if not self._accounts:
             raise SonosError("No Apple Music account in the Sonos household")
-        account_id = next(iter(self._accounts))
-        result = self._with_browser(account_id, lambda b: b.get_metadata(container_id, 0, 200))
-        tracks = [track_from_browse_item(item, account_id) for item in result.items]
+        return self._container_tracks(next(iter(self._accounts)), container_id)
+
+    def _container_tracks(self, account_id: str, container_id: str) -> list[Track]:
+        from soco.exceptions import MusicServiceException
+
+        def load(browser: Any) -> list[Any]:
+            items: list[Any] = []
+            while len(items) < MAX_FALLBACK_TRACKS:
+                page = browser.get_metadata(container_id, len(items), 100)
+                batch = list(page.items)
+                items.extend(batch)
+                total = getattr(page, "total", None)
+                if not batch or (total is not None and len(items) >= int(total)):
+                    break
+            return items
+
+        try:
+            items = self._with_browser(account_id, load)
+        except MusicServiceAuthError:
+            raise
+        except MusicServiceException as err:
+            raise SonosError(str(err)) from err
+        tracks = [track_from_browse_item(item, account_id) for item in items]
         return [t for t in tracks if t is not None]
 
     def track_key(self, track: Track) -> str:
@@ -465,3 +493,57 @@ def _describe_account(account: Any) -> str:
         f"token={'needs_reauth' if token == NEEDS_REAUTH else len(token)} chars, "
         f"key={len(key)} chars"
     )
+
+
+# -- Apple Music library ----------------------------------------------------
+
+# Containers worth opening on the way to the library playlists (id or title).
+_LIBRARY_HINTS = ("librar", "playlist", "mediathek", "wiedergabeliste", "my music", "meine musik")
+_PLAYLIST_TYPES = {"playlist", "albumlist", "favorites"}
+_SKIP_TYPES = {"album", "artist", "track", "program", "stream", "show", "audiobook", "genre"}
+
+
+def _smapi_records(browser: Any, object_id: str, limit: int = 500) -> list[dict[str, Any]]:
+    """All child records of an SMAPI container (the fork's per-account client)."""
+    client = browser._scoped_client()
+    records: list[dict[str, Any]] = []
+    while len(records) < limit:
+        page = client.get_metadata(object_id, len(records), 100)
+        batch = [r for r in page.get("items", []) if isinstance(r, Mapping)]
+        records.extend(dict(r) for r in batch)
+        if not batch or len(records) >= int(page.get("total", 0) or 0):
+            break
+    return records
+
+
+def library_playlists(browser: Any) -> list[tuple[str, str]]:
+    """(id, title) of the playlists in the account's library.
+
+    Apple's SMAPI tree is walked from the root through library/playlist folders
+    (a few levels, a few containers) instead of hard-coding IDs. Library playlists
+    carry IDs like ``libraryplaylist:p.…``; editorial playlists outside the library
+    are only used if the library has none.
+    """
+    library: dict[str, str] = {}
+    other: dict[str, str] = {}
+    pending: list[tuple[str, int]] = [("root", 0)]
+    opened = 0
+    while pending and opened < 12:
+        container, depth = pending.pop(0)
+        opened += 1
+        for record in _smapi_records(browser, container):
+            rid = str(record.get("id") or "")
+            title = str(record.get("title") or "").strip()
+            item_type = str(record.get("itemType") or "").lower()
+            if not rid or not title:
+                continue
+            if rid.startswith("libraryplaylist:"):
+                library.setdefault(rid, title)
+            elif item_type in _PLAYLIST_TYPES and "playlist" in rid.lower():
+                other.setdefault(rid, title)
+            elif depth < 3 and item_type not in _SKIP_TYPES:
+                text = f"{rid} {title}".lower()
+                if any(hint in text for hint in _LIBRARY_HINTS):
+                    pending.append((rid, depth + 1))
+    found = library or other
+    return sorted(found.items(), key=lambda item: item[1].casefold())

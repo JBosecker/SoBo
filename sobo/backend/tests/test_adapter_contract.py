@@ -3,7 +3,7 @@ mocked SoCo device (plan 9)."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from soco.exceptions import SoCoUPnPException
@@ -22,6 +22,7 @@ from sobo.sonos.fixtures import FAKE_ACCOUNT_ID, fake_catalog
 from sobo.sonos.soco_adapter import (
     SoCoAdapter,
     decode_container_favorite,
+    library_playlists,
     parse_hms,
     track_from_browse_item,
     use_household_identity_if_unscoped,
@@ -457,3 +458,77 @@ def test_household_identity_for_accounts_without_uid(uid: int | None, plain: boo
     expected = browser._client if plain else browser._scoped
     assert browser._scoped_client() is expected
     assert browser._scoped_client(True) is expected
+
+
+class _LibraryClient:
+    TREE: ClassVar[dict[str, list[dict[str, str]]]] = {
+        "root": [
+            {"id": "library", "title": "Mediathek", "itemType": "container"},
+            {"id": "browse", "title": "Entdecken", "itemType": "container"},
+            {"id": "playlist:pl.editorial", "title": "Top Hits", "itemType": "playlist"},
+        ],
+        "library": [
+            {"id": "libraryfolder:f.1", "title": "Playlists", "itemType": "container"},
+            {"id": "libraryalbums", "title": "Alben", "itemType": "album"},
+        ],
+        "libraryfolder:f.1": [
+            {"id": "libraryplaylist:p.b", "title": "Zeta", "itemType": "playlist"},
+            {"id": "libraryplaylist:p.a", "title": "Abendessen", "itemType": "playlist"},
+        ],
+    }
+
+    def __init__(self) -> None:
+        self.opened: list[str] = []
+
+    def get_metadata(self, object_id: str, index: int, count: int) -> dict[str, object]:
+        self.opened.append(object_id)
+        items = self.TREE.get(object_id, [])
+        return {"items": items[index : index + count], "total": len(items)}
+
+
+class _Page:
+    def __init__(self, items: list[_BrowseItem], total: int) -> None:
+        self.items = items
+        self.total = total
+
+
+class _LibraryBrowser(FakeBrowser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.client = _LibraryClient()
+
+    def _scoped_client(self, force_scoped: bool = False) -> _LibraryClient:
+        return self.client
+
+    def get_metadata(self, container: str, index: int, count: int) -> _Page:
+        assert container == "libraryplaylist:p.a"
+        tracks = [_BrowseItem(t) for t in self.catalog * 30][:250]  # more than one page
+        return _Page(tracks[index : index + count], len(tracks))
+
+
+def test_library_playlists_walks_only_the_library() -> None:
+    browser = _LibraryBrowser()
+    assert library_playlists(browser) == [
+        ("libraryplaylist:p.a", "Abendessen"),
+        ("libraryplaylist:p.b", "Zeta"),
+    ]
+    assert "browse" not in browser.client.opened  # no library hint in id or title
+    assert "libraryalbums" not in browser.client.opened
+
+
+def test_soco_apple_playlists_as_fallback_sources() -> None:
+    adapter = SoCoAdapter(
+        discover_fn=lambda: {FakeSoCoDevice()},
+        browser_factory=lambda dev, acc: _LibraryBrowser(),
+        accounts_fn=lambda dev: [_Account()],
+    )
+    adapter.configure(SpeakerConfig("RINCON_1", ()))
+    assert adapter.list_fallback_sources(None) == []
+    sources = adapter.list_fallback_sources("3")
+    assert [(s.name, s.kind) for s in sources] == [
+        ("Abendessen", "apple_playlist"),
+        ("Zeta", "apple_playlist"),
+    ]
+    assert sources[0].source_id == "apple_playlist:3:libraryplaylist:p.a"
+    tracks = adapter.fallback_tracks(sources[0].source_id)
+    assert len(tracks) == 250 and all(t.account_id == "3" for t in tracks)

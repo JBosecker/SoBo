@@ -105,6 +105,8 @@ def check_speaker(speaker: Any, account: Any) -> None:
             lambda: _count_page(browser._client.search(mapped, TERM, 0, 3)),
         )
     step("content/root browse", lambda: _count(browser.get_metadata()))
+    step("SMAPI root (household identity)", lambda: _tree(browser._client, "root"))
+    step("library playlists as SoBo finds them", lambda: _library(speaker, account))
 
     scoped = browser._scoped_client()
     refreshed = step("refreshAuthToken (scoped identity)", lambda: _refresh(scoped, acc))
@@ -125,6 +127,20 @@ def _refresh(client: Any, account: Any) -> str:
     client.refresh_auth_token()
     after = len(str(account.token or ""))
     return f"new token_len={after} (was {before}), key_len={len(str(account.key or ''))}"
+
+
+def _tree(client: Any, object_id: str) -> str:
+    page = client.get_metadata(object_id, 0, 50)
+    return ", ".join(
+        f"{r.get('title')!r}<{r.get('itemType')}:{r.get('id')}>" for r in page.get("items", [])
+    )
+
+
+def _library(speaker: Any, account: Any) -> str:
+    from sobo.sonos.soco_adapter import _default_browser, library_playlists
+
+    found = library_playlists(_default_browser(speaker, copy.copy(account)))
+    return f"{len(found)} playlists: {[title for _, title in found[:15]]}"
 
 
 def _count(result: Any) -> str:
