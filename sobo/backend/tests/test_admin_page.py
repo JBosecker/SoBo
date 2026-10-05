@@ -274,3 +274,13 @@ def test_sonos_list_errors_show_the_reason(
     expect(page.locator("form[data-section=music]")).to_contain_text(
         "Sonos is not responding right now. (Reason: simulated failure in get_accounts)"
     )
+
+
+def test_music_sign_in_banner(browser: Browser, harness: tuple[AdminHarness, str]) -> None:
+    h, url = harness
+    configure(h)
+    h.ctx.jukebox.service_error = "music_auth"
+    page = open_admin(browser, url)
+    expect(page.locator("#banner")).to_contain_text("sign in again", timeout=8000)
+    page_de = open_admin(browser, url, locale="de-DE")
+    expect(page_de.locator("#banner")).to_contain_text("melde dich neu an", timeout=8000)

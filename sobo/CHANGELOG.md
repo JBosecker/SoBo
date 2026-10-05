@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2
+
+- Searching failed with `AuthTokenExpired` when the Apple Music sign-in SoBo had read
+  from the Sonos system was outdated. SoBo now reads the sign-in again and retries
+  once; the Sonos players refresh it on their own.
+- If Apple Music still rejects the sign-in, the admin UI shows a banner explaining how
+  to sign in again in the Sonos app, and the log describes the stored sign-in (without
+  secrets).
+
 ## 0.1.1
 
 - Fix: the Apple Music account was not offered ("Sonos is not responding right now").

@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ..clock import Clock
 from ..sonos.adapter import (
+    MusicServiceAuthError,
     PlaybackStatus,
     SonosAdapter,
     SonosError,
@@ -109,6 +110,8 @@ class Jukebox:
         self.last_error: str | None = None
         self.override_info: str | None = None
         self.fallback_error: str | None = None
+        # "music_auth": the music service rejects the household's stored sign-in
+        self.service_error: str | None = None
         self.search_cache = SearchCache(clock)
         self._fallback: FallbackPlaylist | None = None
         self._fallback_source: str | None = None
@@ -248,7 +251,14 @@ class Jukebox:
         account_id = self.settings.account_id
         if not account_id:
             raise RuleViolation("not_configured")
-        tracks = await self.worker.call(lambda a: a.search_tracks(account_id, term, SEARCH_RESULTS))
+        try:
+            tracks = await self.worker.call(
+                lambda a: a.search_tracks(account_id, term, SEARCH_RESULTS)
+            )
+        except MusicServiceAuthError:
+            self._set_service_error("music_auth")
+            raise
+        self._set_service_error(None)
         hits = []
         for track in tracks:
             existing = self.queue.open_by_key(self.adapter.track_key(track))
@@ -576,6 +586,13 @@ class Jukebox:
                 _LOG.warning("Could not remove the next track: %s", err)
         self._set_state(JukeboxState.INACTIVE)
 
+    def _set_service_error(self, code: str | None) -> None:
+        if self.service_error != code:
+            if code:
+                _LOG.warning("Music service sign-in rejected; re-authorize it in the Sonos app")
+            self.service_error = code
+            self.notifier.bump()
+
     async def tick(self) -> None:
         """One step of playback control. Errors end up in `last_error`."""
         async with self._lock:
@@ -583,6 +600,8 @@ class Jukebox:
                 await self._tick()
             except SonosError as err:
                 _LOG.warning("Sonos error: %s", err)
+                if isinstance(err, MusicServiceAuthError):
+                    self._set_service_error("music_auth")
                 self.last_error = str(err)
                 self._set_state(JukeboxState.ERROR)
             self.queue.prune()
@@ -779,6 +798,7 @@ class Jukebox:
             "override_info": self.override_info,
             "fallback_loaded": self._fallback.size if self._fallback else None,
             "fallback_error": self.fallback_error,
+            "service_error": self.service_error,
             "playback": {
                 "transport": status.transport.value,
                 "position": status.position,

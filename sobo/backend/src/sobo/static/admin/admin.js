@@ -57,6 +57,7 @@
       took_over: "SoBo is back in control.",
       no_speaker_banner: "No speaker selected. Without a speaker SoBo cannot play anything.",
       choose_speaker: "Choose speaker",
+      music_auth: "Apple Music rejects the sign-in stored in your Sonos system, so searching and playing requests fail. In the Sonos app, open Apple Music in the service settings and sign in again (or remove and re-add the service); SoBo picks up the new sign-in automatically.",
       sonos_error: "Sonos reports a problem: {error}",
       fallback_error: "The base playlist cannot be loaded: {error}",
       from_fallback: "From the base playlist",
@@ -233,6 +234,7 @@
       took_over: "SoBo hat wieder übernommen.",
       no_speaker_banner: "Kein Lautsprecher gewählt. Ohne Lautsprecher kann SoBo nichts abspielen.",
       choose_speaker: "Lautsprecher wählen",
+      music_auth: "Apple Music lehnt die im Sonos-System gespeicherte Anmeldung ab, deshalb schlagen Suche und Wünsche fehl. Öffne in der Sonos-App Apple Music in den Diensteinstellungen und melde dich neu an (oder entferne den Dienst und füge ihn wieder hinzu); SoBo übernimmt die neue Anmeldung automatisch.",
       sonos_error: "Sonos meldet eine Störung: {error}",
       fallback_error: "Die Basis-Playlist lässt sich nicht laden: {error}",
       from_fallback: "Aus der Basis-Playlist",
@@ -546,6 +548,8 @@
         label: t("take_over"),
         run: () => act("POST", "api/control/resume", undefined, t("took_over")),
       });
+    } else if (status.service_error === "music_auth") {
+      showBanner(t("music_auth"), null);
     } else if (status.last_error === "no_speaker" && status.active) {
       showBanner(t("no_speaker_banner"), {
         label: t("choose_speaker"),

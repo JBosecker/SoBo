@@ -25,6 +25,14 @@ class TrackUnavailable(SonosError):
     """The track cannot be played (any more)."""
 
 
+class MusicServiceAuthError(SonosError):
+    """The music service rejected the sign-in stored in the Sonos household.
+
+    Raised only after SoBo re-read the household's credentials and retried. The
+    owner has to re-authorize the service in the Sonos app.
+    """
+
+
 class TransportState(StrEnum):
     PLAYING = "playing"
     PAUSED = "paused"

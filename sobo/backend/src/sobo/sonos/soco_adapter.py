@@ -9,12 +9,13 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, TypeVar
 from urllib.parse import unquote
 
 from .adapter import (
     FallbackSource,
     MusicAccount,
+    MusicServiceAuthError,
     PlaybackStatus,
     SonosError,
     SpeakerConfig,
@@ -26,6 +27,7 @@ from .adapter import (
 )
 
 _LOG = logging.getLogger(__name__)
+T = TypeVar("T")
 
 SERVICE_NAME = "Apple Music"
 
@@ -154,22 +156,53 @@ class SoCoAdapter:
             self._browsers[account_id] = self._browser_factory(self.coordinator, account)
         return self._browsers[account_id]
 
+    def _with_browser(self, account_id: str, fn: Callable[[Any], T]) -> T:
+        """Run `fn(browser)`; on an auth fault re-read the household credentials once.
+
+        Sonos players refresh music-service tokens themselves and store the new ones
+        in the household. Credentials SoBo read earlier can therefore be outdated;
+        reading them again and retrying fixes that. If the service still rejects
+        the sign-in, the stored authorization itself is invalid.
+        """
+        try:
+            return fn(self._browser(account_id))
+        except Exception as err:
+            if not _is_auth_error(err):
+                raise
+            _LOG.info("Music service rejected the sign-in, re-reading accounts: %s", err)
+        self._browsers.pop(account_id, None)
+        self.get_accounts()
+        try:
+            return fn(self._browser(account_id))
+        except Exception as err:
+            if _is_auth_error(err):
+                _LOG.warning(
+                    "Music service still rejects the sign-in after re-reading it (%s)",
+                    _describe_account(self._accounts.get(account_id)),
+                )
+                raise MusicServiceAuthError(str(err)) from err
+            raise
+
     def _resolve(self, track: Track) -> tuple[str, str]:
         if track.uri:
             return track.uri, track.meta or ""
         from soco.exceptions import MusicServiceException
         from soco.music_services.browser.playback import build_metadata, build_uri, resolve_item
 
-        browser = self._browser(track.account_id)
-        try:
+        def resolve(browser: Any) -> tuple[str, str]:
             item_id, item_type, mime, title = resolve_item(browser, track.item_id)
             uri = build_uri(browser, item_id, item_type or "track", mime)
             meta = build_metadata(
                 browser, item_id, title or track.title, item_type or "track", mime=mime, uri=uri
             )
+            return str(uri), str(meta)
+
+        try:
+            return self._with_browser(track.account_id, resolve)
+        except MusicServiceAuthError:
+            raise
         except MusicServiceException as err:
             raise TrackUnavailable(str(err)) from err
-        return str(uri), str(meta)
 
     def _enqueue_at_end(self, uri: str, meta: str) -> None:
         self.coordinator.avTransport.AddURIToQueue(
@@ -235,9 +268,10 @@ class SoCoAdapter:
     def search_tracks(self, account_id: str, term: str, count: int) -> list[Track]:
         from soco.exceptions import MusicServiceException
 
-        browser = self._browser(account_id)
         try:
-            result = browser.search("tracks", term, 0, count)
+            result = self._with_browser(account_id, lambda b: b.search("tracks", term, 0, count))
+        except MusicServiceAuthError:
+            raise
         except MusicServiceException as err:
             raise SonosError(str(err)) from err
         tracks = [track_from_browse_item(item, account_id) for item in result.items]
@@ -351,8 +385,7 @@ class SoCoAdapter:
         if not self._accounts:
             raise SonosError("No Apple Music account in the Sonos household")
         account_id = next(iter(self._accounts))
-        browser = self._browser(account_id)
-        result = browser.get_metadata(container_id, 0, 200)
+        result = self._with_browser(account_id, lambda b: b.get_metadata(container_id, 0, 200))
         tracks = [track_from_browse_item(item, account_id) for item in result.items]
         return [t for t in tracks if t is not None]
 
@@ -382,3 +415,31 @@ def _default_browser(device: Any, account: Any) -> Any:
     from soco.music_services.browser import MusicServiceBrowser
 
     return MusicServiceBrowser(SERVICE_NAME, account=account, device=device)
+
+
+def _is_auth_error(err: BaseException) -> bool:
+    """Music service rejected the stored sign-in (expired/invalid token)."""
+    from soco.exceptions import MusicServiceAuthException
+
+    if isinstance(err, MusicServiceAuthException):
+        return True
+    text = str(err).lower()
+    return any(marker in text for marker in ("authtokenexpired", "invalidtoken", "unauthorized"))
+
+
+# Marker the Sonos household stores instead of a token when it needs re-authorization
+NEEDS_REAUTH = "needs_reauth"
+
+
+def _describe_account(account: Any) -> str:
+    """Shape of the stored credentials for the log – never the secrets themselves."""
+    if account is None:
+        return "account not found"
+    token = str(getattr(account, "token", "") or "")
+    key = str(getattr(account, "key", "") or "")
+    return (
+        f"serial={getattr(account, 'serial_number', '?')} "
+        f"udn={str(getattr(account, 'udn', '')).split('_X_')[0]} "
+        f"token={'needs_reauth' if token == NEEDS_REAUTH else len(token)} chars, "
+        f"key={len(key)} chars"
+    )

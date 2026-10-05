@@ -14,7 +14,7 @@ from sobo.engine.models import ItemState, Origin
 from sobo.engine.persistence import MemoryRepository
 from sobo.engine.settings import FallbackSettings, LimitSettings, VoteSettings
 from sobo.engine.state import JukeboxState
-from sobo.sonos.adapter import TransportState
+from sobo.sonos.adapter import MusicServiceAuthError, TransportState
 from sobo.sonos.fake_adapter import FakeSonosAdapter
 from sobo.sonos.worker import SonosWorker
 
@@ -542,3 +542,26 @@ async def test_broken_fallback_is_retried_with_delay(
     assert fake.calls.count("fallback_tracks") == 2
     assert jukebox.fallback_error is None
     assert jukebox.state == JukeboxState.PLAYING_FALLBACK
+
+
+async def test_rejected_music_sign_in_is_reported(
+    jukebox: Jukebox, fake: FakeSonosAdapter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guest = make_guest(jukebox)
+    original = fake.search_tracks
+
+    def rejected(*args: object) -> object:
+        raise MusicServiceAuthError("AuthTokenExpired")
+
+    monkeypatch.setattr(fake, "search_tracks", rejected)
+    version = jukebox.notifier.version
+    with pytest.raises(MusicServiceAuthError):
+        await jukebox.search(guest, "neon")
+    assert jukebox.service_error == "music_auth"
+    assert jukebox.notifier.version > version
+    assert jukebox.admin_view()["service_error"] == "music_auth"
+
+    # After re-authorizing in the Sonos app the next search works and clears it.
+    monkeypatch.setattr(fake, "search_tracks", original)
+    assert await jukebox.search(guest, "neon")
+    assert jukebox.service_error is None

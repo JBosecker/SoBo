@@ -9,7 +9,14 @@ import pytest
 from soco.exceptions import SoCoUPnPException
 
 from sobo.clock import ManualClock
-from sobo.sonos.adapter import SonosAdapter, SpeakerConfig, Track, TransportState, uri_key
+from sobo.sonos.adapter import (
+    MusicServiceAuthError,
+    SonosAdapter,
+    SpeakerConfig,
+    Track,
+    TransportState,
+    uri_key,
+)
 from sobo.sonos.fake_adapter import FakeSonosAdapter
 from sobo.sonos.fixtures import FAKE_ACCOUNT_ID, fake_catalog
 from sobo.sonos.soco_adapter import (
@@ -371,3 +378,53 @@ def test_soco_can_decrypt_the_account_envelope() -> None:
     decrypted = credentials._decrypt_account_payload(encoded, household)
     [account] = credentials.ConfiguredMusicServiceAccount.from_payload(decrypted)
     assert (account.service_id, account.serial_number, account.nickname) == (204, 3, "Party")
+
+
+class _ExpiringBrowser(FakeBrowser):
+    """Rejects credentials until the household hands out fresh ones."""
+
+    def __init__(self, generation: int, valid_from: int) -> None:
+        super().__init__()
+        self.generation = generation
+        self.valid_from = valid_from
+
+    def search(self, category: str, term: str, index: int, count: int) -> _SearchResult:
+        from soco.exceptions import MusicServiceAuthException
+
+        if self.generation < self.valid_from:
+            raise MusicServiceAuthException(
+                "SOAP-ENV:Client.AuthTokenExpired: InvalidTokenException (HTTP 500)"
+            )
+        return super().search(category, term, index, count)
+
+
+def _expiring_adapter(valid_from: int) -> tuple[SoCoAdapter, list[int]]:
+    reads: list[int] = []
+
+    def accounts(_: object) -> list[_Account]:
+        reads.append(len(reads) + 1)
+        return [_Account()]
+
+    adapter = SoCoAdapter(
+        discover_fn=lambda: {FakeSoCoDevice()},
+        browser_factory=lambda dev, acc: _ExpiringBrowser(len(reads), valid_from),
+        accounts_fn=accounts,
+    )
+    adapter.configure(SpeakerConfig("RINCON_1", ()))
+    return adapter, reads
+
+
+def test_soco_rereads_household_credentials_after_auth_fault() -> None:
+    # Credentials read first are outdated (rotated by the players), the second read works.
+    adapter, reads = _expiring_adapter(valid_from=2)
+    assert adapter.search_tracks("3", "neon", 1)
+    assert reads == [1, 2]
+    assert adapter.search_tracks("3", "neon", 1)  # the fresh browser is kept
+    assert reads == [1, 2]
+
+
+def test_soco_reports_rejected_sign_in() -> None:
+    adapter, reads = _expiring_adapter(valid_from=99)
+    with pytest.raises(MusicServiceAuthError, match="AuthTokenExpired"):
+        adapter.search_tracks("3", "neon", 1)
+    assert reads == [1, 2]  # retried exactly once
