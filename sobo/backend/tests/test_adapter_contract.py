@@ -24,6 +24,7 @@ from sobo.sonos.soco_adapter import (
     decode_container_favorite,
     parse_hms,
     track_from_browse_item,
+    use_household_identity_if_unscoped,
 )
 
 # --------------------------------------------------------------------------- SoCo mocks
@@ -428,3 +429,31 @@ def test_soco_reports_rejected_sign_in() -> None:
     with pytest.raises(MusicServiceAuthError, match="AuthTokenExpired"):
         adapter.search_tracks("3", "neon", 1)
     assert reads == [1, 2]  # retried exactly once
+
+
+class _IdentityBrowser:
+    def __init__(self, uid: int | None) -> None:
+        self._client = object()
+        self._scoped = object()
+        self.uid = uid
+
+        class _Acc:
+            @property
+            def account_uid(acc_self) -> int:
+                if uid is None:
+                    raise ValueError("no account UID in the UDN")
+                return uid
+
+        self.account = _Acc()
+
+    def _scoped_client(self, force_scoped: bool = False) -> object:
+        return self._scoped
+
+
+@pytest.mark.parametrize(("uid", "plain"), [(0, True), (0x97D97447, False), (None, False)])
+def test_household_identity_for_accounts_without_uid(uid: int | None, plain: bool) -> None:
+    """Apple rejects `<household>_00000000` (real household, diagnose_apple_music.py)."""
+    browser = use_household_identity_if_unscoped(_IdentityBrowser(uid))
+    expected = browser._client if plain else browser._scoped
+    assert browser._scoped_client() is expected
+    assert browser._scoped_client(True) is expected

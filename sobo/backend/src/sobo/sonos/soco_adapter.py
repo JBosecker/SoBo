@@ -414,7 +414,29 @@ def _default_accounts(device: Any) -> list[Any]:
 def _default_browser(device: Any, account: Any) -> Any:
     from soco.music_services.browser import MusicServiceBrowser
 
-    return MusicServiceBrowser(SERVICE_NAME, account=account, device=device)
+    return use_household_identity_if_unscoped(
+        MusicServiceBrowser(SERVICE_NAME, account=account, device=device)
+    )
+
+
+def use_household_identity_if_unscoped(browser: Any) -> Any:
+    """Send SMAPI calls under the plain household ID for accounts without an account UID.
+
+    The SoCo fork derives an account-scoped identity (``<household>_<uid:08x>``) from
+    the account UDN. Accounts stored as ``…_X_#Svc52231-0-Token`` have the UID 0;
+    Apple rejects the resulting ``<household>_00000000`` with ``AuthTokenExpired``
+    (``InvalidTokenException``), while the plain household ID works for search,
+    metadata and token refresh (verified on a real household,
+    `scripts/diagnose_apple_music.py`). Accounts with a real UID keep the fork's
+    behaviour.
+    """
+    try:
+        uid = int(browser.account.account_uid)
+    except Exception:  # no UID in the UDN: the fork does not scope either
+        return browser
+    if uid == 0 and hasattr(browser, "_scoped_client") and hasattr(browser, "_client"):
+        browser._scoped_client = lambda force_scoped=False: browser._client
+    return browser
 
 
 def _is_auth_error(err: BaseException) -> bool:

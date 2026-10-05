@@ -122,6 +122,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 |---|---|---|
 | 0.1.0 | The Apple Music account was not offered ("Sonos is not responding right now"): Sonos sends the account list AES-encrypted and the image lacked `cryptography` | 0.1.1: dependency `soco[music-services]`, unit test with a real envelope, smoke test checks the image; the admin UI shows the reason of Sonos errors |
 | 0.1.1 | Search failed with `Client.AuthTokenExpired` (`InvalidTokenException`): Apple rejected the sign-in read from the household, even after the fork's token refresh | 0.1.2: re-read the household credentials and retry once; if still rejected, banner with re-authorization hint and a log line describing the stored sign-in (open: confirm on the real system) |
+| 0.1.2 | Still `AuthTokenExpired`. `scripts/diagnose_apple_music.py` on the real household: the account UDN carries the UID 0, the fork's account-scoped identity `<household>_00000000` is rejected by Apple, the plain household identity works for search and token refresh on every speaker | 0.1.3: plain household identity for accounts without a UID (`use_household_identity_if_unscoped`); report to the fork |
 
 ## Open points / risks
 

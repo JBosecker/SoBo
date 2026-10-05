@@ -65,3 +65,7 @@ Not part of the implementation plan, but needed before recommending SoBo to othe
 5. AppArmor on HAOS: the app log and the host log (`ha host logs | grep DENIED`) must
    stay free of denials for the SoBo profile.
 6. Note results and any changed defaults in `docs/STATUS.md`.
+
+If Apple Music search fails, run `scripts/diagnose_apple_music.py` from `sobo/backend`
+(`uv run python ../../scripts/diagnose_apple_music.py`) on a computer in the same network;
+it prints which identity and token steps Apple accepts, without secrets.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3
+
+- Fix: Apple Music search failed with `AuthTokenExpired` for accounts stored without an
+  account UID (`…-0-Token`). SoBo now talks to Apple Music under the plain household
+  identity for such accounts, which Apple accepts (search, track details, playback
+  resolution).
+- `scripts/diagnose_apple_music.py` checks the Apple Music sign-in against a real
+  household without playing anything.
+
 ## 0.1.2
 
 - Searching failed with `AuthTokenExpired` when the Apple Music sign-in SoBo had read
