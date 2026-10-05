@@ -1,5 +1,5 @@
-# Quelle: https://github.com/nayuki/QR-Code-generator (python/qrcodegen.py)
-# Commit 3c6d0b3cefb4e049dc337e82237c9644399716a8, unverändert übernommen.
+# Source: https://github.com/nayuki/QR-Code-generator (python/qrcodegen.py)
+# Commit 3c6d0b3cefb4e049dc337e82237c9644399716a8, copied unmodified.
 # 
 # QR Code generator library (Python)
 # 

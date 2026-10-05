@@ -24,4 +24,4 @@ DEFAULT_LONG_POLL_TIMEOUT: Final = 20
 PROXY_TIMEOUT_EXTRA: Final = 5
 REQUEST_TIMEOUT: Final = 10
 
-WEBHOOK_NAME: Final = "SoBo Gastzugang"
+WEBHOOK_NAME: Final = "SoBo guest access"

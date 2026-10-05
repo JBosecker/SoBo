@@ -1,1 +1,1 @@
-"""Unveränderte Fremdbibliotheken (Lizenzhinweise in den Dateien)."""
+"""Unmodified third-party libraries (license notices in the files)."""
