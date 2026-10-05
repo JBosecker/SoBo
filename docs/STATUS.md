@@ -132,6 +132,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.1.2 | Still `AuthTokenExpired`. `scripts/diagnose_apple_music.py` on the real household: the account UDN carries the UID 0, the fork's account-scoped identity `<household>_00000000` is rejected by Apple, the plain household identity works for search and token refresh on every speaker | 0.1.3: plain household identity for accounts without a UID (`use_household_identity_if_unscoped`); report to the fork |
 | 0.1.3 | Feedback: the next song disappeared from the queue as soon as the current one started and could no longer be influenced | 0.2.0: next song fixed only shortly before the end (setting, default 30 s) |
 | 0.1.3 | Feedback: the base playlist list showed Sonos playlists, not the Apple Music playlists of the selected account | 0.2.0: Apple Music library playlists per account; confirmed on the real system (root → `collection:view:libraryroot` → `libraryplaylist:` entries; Apple answers some folder requests with a generic `SOAP-ENV:Server` fault, such folders are skipped) |
+| 0.2.0 | Feedback: the base playlist should also appear in the queue | 0.2.1: preview of the next five base playlist songs after the requests (guest page and admin UI, no voting) |
 
 ## Open points / risks
 

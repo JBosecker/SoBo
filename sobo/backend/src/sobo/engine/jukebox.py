@@ -42,6 +42,8 @@ _LOG = logging.getLogger(__name__)
 
 SEARCH_RESULTS = 20
 GUEST_QUEUE_LIMIT = 30
+# Base playlist tracks shown after the requests (guest page and admin UI)
+FALLBACK_PREVIEW = 5
 MAX_ENQUEUE_ATTEMPTS = 3
 # A STOPPED right after starting is a transition, not the end of the track.
 MIN_PLAY_SECONDS = 5
@@ -749,6 +751,14 @@ class Jukebox:
             view["art"] = track.art_url
         return view
 
+    def fallback_preview(self) -> list[Track]:
+        """Base playlist tracks that will play once the requests are through."""
+        if self._fallback is None:
+            return []
+        exclude = {self.key(i) for i in (self.queue.playing, self.queue.next_item) if i}
+        exclude |= {self.key(i) for i in self.queue.waiting()}
+        return self._fallback.upcoming(FALLBACK_PREVIEW, exclude)
+
     def guest_view(self, guest: Guest | None) -> dict[str, Any]:
         """Compact state for the guest page (target < 10 KB)."""
         covers = self.settings.guest_access.show_covers
@@ -779,6 +789,10 @@ class Jukebox:
                     entry["voted"] = True
                 if item.submitted_by == guest.id:
                     entry["mine"] = True
+            entries.append(entry)
+        for track in self.fallback_preview():
+            entry = self._track_view(track, covers)
+            entry["fallback"] = True
             entries.append(entry)
         view["queue"] = entries
         if guest is not None:
@@ -843,6 +857,9 @@ class Jukebox:
             "now_playing": self._admin_item(current) if current else None,
             "next": self._admin_item(nxt) if nxt else None,
             "queue": [self._admin_item(i) for i in self.queue.waiting()],
+            "fallback_upcoming": [
+                {"title": t.title, "artist": t.artist} for t in self.fallback_preview()
+            ],
             "history": [self._admin_item(i) for i in self.queue.played(20)],
             "guests": {"total": len(self.guests), "active": self.active_guest_count()},
         }

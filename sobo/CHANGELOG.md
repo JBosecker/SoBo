@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- The queue shows what the base playlist will play after the requests (next five
+  songs, marked "From the party playlist" on the guest page and "From the base
+  playlist" in the admin UI). They are a preview: guests cannot vote on them.
+
 ## 0.2.0
 
 - The next song is no longer fixed as soon as the current one starts. It stays in the

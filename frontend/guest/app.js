@@ -43,6 +43,7 @@
       voted_label: "You voted for {title}",
       vote_label: "Vote for {title}",
       your_request: "Your request",
+      from_playlist: "From the party playlist",
       me_one: "{name}, you have {n} vote left.",
       me_other: "{name}, you have {n} votes left.",
       next_vote: " The next one comes in {time}.",
@@ -117,6 +118,7 @@
       voted_label: "Du hast für {title} gestimmt",
       vote_label: "Für {title} stimmen",
       your_request: "Dein Wunsch",
+      from_playlist: "Aus der Party-Playlist",
       me_one: "{name}, du hast noch {n} Stimme.",
       me_other: "{name}, du hast noch {n} Stimmen.",
       next_vote: " Die nächste gibt es in {time}",
@@ -374,13 +376,19 @@
     const items = state.queue || [];
     list.replaceChildren(
       ...items.map((item) => {
+        if (item.fallback) {
+          // Base playlist: plays once the requests are through; nothing to vote on.
+          const li = strip(item, "fallback");
+          li.firstChild.append(el("span", "strip-meta", t("from_playlist")));
+          return li;
+        }
         const li = strip(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "));
         if (item.mine) li.firstChild.append(el("span", "strip-meta", t("your_request")));
         li.append(voteButton(item));
         return li;
       })
     );
-    $("queue-empty").hidden = items.length > 0;
+    $("queue-empty").hidden = items.some((item) => !item.fallback);
   }
 
   function renderMe() {

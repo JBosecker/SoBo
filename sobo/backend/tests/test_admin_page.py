@@ -154,11 +154,13 @@ def test_live_moderation(browser: Browser, harness: tuple[AdminHarness, str]) ->
     guest_wishes(h, "Mia", "comet", "copper")
     guest_wishes(h, "Tom", "velvet")
     page = open_admin(browser, url)
-    queue = page.locator("#queue li")
+    queue = page.locator("#queue li:not(.fallback)")
     # The next song is only fixed shortly before the end: all three are still open.
     expect(queue).to_have_count(3, timeout=8000)
     expect(page.locator("#next-line")).to_contain_text("chosen by the votes")
     expect(queue.first).to_contain_text("Requested by Mia")
+    # After the requests: what the base playlist will play.
+    expect(page.locator("#queue li.fallback").first).to_contain_text("From the base playlist")
 
     strip = queue.filter(has_text="Velvet Engine")
     strip.get_by_role("button", name="Pin").click()

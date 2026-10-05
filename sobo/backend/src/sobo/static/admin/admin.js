@@ -608,7 +608,9 @@
     freeze.setAttribute("aria-pressed", String(status.frozen));
     freeze.textContent = status.frozen ? t("frozen") : t("freeze");
 
-    if (changed("queue", status.queue)) renderQueue(status.queue);
+    if (changed("queue", [status.queue, status.fallback_upcoming])) {
+      renderQueue(status.queue, status.fallback_upcoming || []);
+    }
     if (changed("history", status.history)) {
       $("history-heading").hidden = status.history.length === 0;
       $("history").replaceChildren(
@@ -617,7 +619,7 @@
     }
   }
 
-  function renderQueue(queue) {
+  function renderQueue(queue, upcoming) {
     $("queue-empty").hidden = queue.length > 0;
     $("queue-count").textContent = queue.length ? tn("requests", queue.length) : "";
     $("queue").replaceChildren(
@@ -651,6 +653,21 @@
               "aria-label": t("remove_label", { title: item.title }),
               onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/remove`, undefined, t("removed")),
             })
+          )
+        )
+      ),
+      // Base playlist: plays once the requests are through.
+      ...upcoming.map((track) =>
+        el(
+          "li",
+          { class: "strip fallback" },
+          el("div", { class: "strip-votes", "aria-hidden": "true" }, "♪"),
+          el(
+            "div",
+            { class: "strip-text" },
+            el("span", { class: "strip-title", text: track.title }),
+            el("span", { class: "strip-artist", text: track.artist || " " }),
+            el("span", { class: "strip-meta", text: t("from_fallback") })
           )
         )
       )

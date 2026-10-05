@@ -637,3 +637,22 @@ async def test_skip_fixes_the_next_track_first(
     await jukebox.tick()
     assert first.state == ItemState.PLAYED
     assert second.state == ItemState.PLAYING
+
+
+async def test_base_playlist_follows_the_requests_in_the_views(
+    jukebox: Jukebox, fake: FakeSonosAdapter
+) -> None:
+    await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
+    await jukebox.tick()
+    playing = jukebox.queue.playing
+    assert playing is not None and playing.origin == Origin.FALLBACK
+    g = make_guest(jukebox)
+    wish = await suggest_title(jukebox, g, "Copper Sky")
+    view = jukebox.guest_view(g)
+    assert view["queue"][0]["id"] == wish.id
+    upcoming = [e for e in view["queue"] if e.get("fallback")]
+    assert upcoming and all("id" not in e for e in upcoming)
+    assert playing.track.title not in [e["title"] for e in upcoming]
+    assert [e["title"] for e in upcoming] == [
+        t["title"] for t in jukebox.admin_view()["fallback_upcoming"]
+    ]

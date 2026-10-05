@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9lAN99+Gupx+D1B+f2u2Ra23LlpMSGk9duobLAOtLGQ='; style-src 'sha256-YscV7ZOP5HZ315ZbBUGR+hd1dnPbanGrJCPl2NztpYk='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oltJGfFVKSOoDkTSb2jv+HCrNlV5s7P8b3VtKyNxvyY='; style-src 'sha256-BX0P5OJ2Xs61oObdY3QU3Cn8o0+/aV3QHKgeQ6n5TJA='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -111,6 +111,8 @@ input:focus { border-color: var(--amber); outline: none; }
 .strip-meta { font-size: 12px; padding: 4px 12px 7px; color: #6b5e48; }
 .strip.mine .strip-artist { background: #2f4f9e; }
 .strip.pinned { box-shadow: inset 4px 0 0 var(--amber); }
+.strip.fallback { opacity: 0.72; }
+.strip.fallback .strip-artist { background: #5b5446; }
 
 .vote {
   min-width: 68px; display: grid; place-items: center; align-content: center; gap: 0;
@@ -248,6 +250,7 @@ input:focus { border-color: var(--amber); outline: none; }
       voted_label: "You voted for {title}",
       vote_label: "Vote for {title}",
       your_request: "Your request",
+      from_playlist: "From the party playlist",
       me_one: "{name}, you have {n} vote left.",
       me_other: "{name}, you have {n} votes left.",
       next_vote: " The next one comes in {time}.",
@@ -322,6 +325,7 @@ input:focus { border-color: var(--amber); outline: none; }
       voted_label: "Du hast für {title} gestimmt",
       vote_label: "Für {title} stimmen",
       your_request: "Dein Wunsch",
+      from_playlist: "Aus der Party-Playlist",
       me_one: "{name}, du hast noch {n} Stimme.",
       me_other: "{name}, du hast noch {n} Stimmen.",
       next_vote: " Die nächste gibt es in {time}",
@@ -579,13 +583,19 @@ input:focus { border-color: var(--amber); outline: none; }
     const items = state.queue || [];
     list.replaceChildren(
       ...items.map((item) => {
+        if (item.fallback) {
+          // Base playlist: plays once the requests are through; nothing to vote on.
+          const li = strip(item, "fallback");
+          li.firstChild.append(el("span", "strip-meta", t("from_playlist")));
+          return li;
+        }
         const li = strip(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "));
         if (item.mine) li.firstChild.append(el("span", "strip-meta", t("your_request")));
         li.append(voteButton(item));
         return li;
       })
     );
-    $("queue-empty").hidden = items.length > 0;
+    $("queue-empty").hidden = items.some((item) => !item.fallback);
   }
 
   function renderMe() {

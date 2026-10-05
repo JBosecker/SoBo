@@ -109,6 +109,17 @@ def test_fallback_shuffle_deterministic_with_seed() -> None:
     assert [one.next_track() for _ in range(10)] == [two.next_track() for _ in range(10)]
 
 
+def test_fallback_upcoming_previews_what_plays_next() -> None:
+    tracks = fake_catalog()[:4]
+    playlist = FallbackPlaylist(tracks, True, lambda t: t.item_id, random.Random(5))
+    preview = playlist.upcoming(6)  # reaches into the next shuffled round
+    assert len(preview) == 4  # every track at most once
+    played = [playlist.next_track() for _ in range(4)]
+    assert preview == played
+    excluded = playlist.upcoming(2, exclude_keys={playlist.upcoming(1)[0].item_id})
+    assert playlist.next_track(exclude_keys=set()) not in excluded
+
+
 def test_fallback_empty() -> None:
     assert FallbackPlaylist([], True, lambda t: t.item_id).next_track() is None
 
