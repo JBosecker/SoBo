@@ -6,7 +6,7 @@ Stand: 05.10.2026
 
 | Phase | Inhalt | Status |
 |---|---|---|
-| 0 – Setup | Repo-Struktur, App-Konfiguration (`config.yaml`, `build.yaml`, `Dockerfile`, s6-Dienst), CI (ruff, mypy, pytest, pip-audit, App-Linter, Multi-Arch-Build), Dependabot, Devcontainer, SoCo-Fork auf `97dba03` gepinnt, Statusseite „Hello SoBo“ | ✔ (Docker-Build noch nicht ausgeführt) |
+| 0 – Setup | Repo-Struktur, App-Konfiguration (`config.yaml`, `Dockerfile`, s6-Dienst), CI (ruff, mypy, pytest, pip-audit, App-Linter, Multi-Arch-Build), Dependabot, Devcontainer, SoCo-Fork auf `97dba03` gepinnt, Statusseite „Hello SoBo“ | ✔ (Docker-Build noch nicht ausgeführt) |
 | 1 – Sonos-Adapter | `SonosAdapter`-Protokoll, `FakeSonosAdapter` (simulierte Zeit), `SoCoAdapter` (Fork), `SonosWorker` (ein Thread, Timeouts), Vertragstests gegen beide Adapter | ✔ |
 | 2 – Engine | Queue, Ranking, Vote-/Vorschlagsbudget (gleitend), Limits (Länge, Explicit, Sperrliste, Sperrzeiten), Basis-Playlist, Zustandsautomat, Lookahead mit Fixierung, `manual_override`, Max-Lautstärke, Versionszähler/Änderungssignal, SQLite-Store + Alembic | ✔ |
 | 4 (Teil) – Gast-API | Strikte Aktionsliste, Sessions (gehasht), Rate-Limits (global, Join, Session, Suche), Long Polling inkl. Ersetzen und globaler Obergrenze, Body-Limit | ✔ |
@@ -48,7 +48,9 @@ uv run pytest -p anyio && uv run mypy src && uv run ruff check src tests
 
 ## Offene Punkte / Risiken aus der Umsetzung
 
-- `build.yaml`: Tag `3.13-alpine3.21` der HA-Base-Images beim ersten CI-Lauf prüfen.
+- Build nach der BuildKit-Umstellung von HA: Basis-Image steht im `Dockerfile`
+  (`base-python:3.13-alpine3.24`, Multi-Arch), `build.yaml` entfällt. CI baut mit
+  `home-assistant/builder/actions/build-image@2026.09.0`, vorerst ohne Push und Signatur.
 - AppArmor-Profil folgt in Phase 5 (bis dahin Supervisor-Standardprofil).
 - Discovery-Host `127.0.0.1` setzt voraus, dass HA Core im Host-Netz läuft (HAOS/Supervised: ja).
 - Store speichert Zeitstempel mit UTC-Zeitzone (SQLModel ≥ 0.0.47 verlangt das).

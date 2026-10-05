@@ -15,14 +15,12 @@ jobs:
       run:
         working-directory: sobo/backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v9.0.0
       - name: Abhängigkeiten
         run: |
-          uv venv
+          # uv installiert Python 3.13 selbst (wie im Image), kein setup-python nötig
+          uv venv -p 3.13
           uv pip install -e ".[dev]" pip-audit
       - name: ruff
         run: |
@@ -38,24 +36,59 @@ jobs:
   app-config:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - name: App-Konfiguration prüfen
         uses: frenck/action-addon-linter@v2
         with:
           path: "./sobo"
 
-  build:
-    needs: [backend, app-config]
+  build-matrix:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [amd64, aarch64]
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Image bauen (ohne Push)
-        uses: home-assistant/builder@master
+      - name: Build-Matrix (amd64 und aarch64 auf nativen Runnern)
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
         with:
-          args: |
-            --${{ matrix.arch }}
-            --target /data/sobo
-            --test
+          architectures: '["amd64", "aarch64"]'
+          image-name: sobo
+          registry-prefix: ghcr.io/jbosecker
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: [backend, app-config, build-matrix]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Version aus config.yaml
+        id: version
+        run: |
+          version="$(grep -E '^version:' sobo/config.yaml | cut -d'"' -f2)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Image bauen (ohne Push)
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          context: ./sobo
+          image: ${{ matrix.image }}
+          image-tags: ${{ steps.version.outputs.version }}
+          version: ${{ steps.version.outputs.version }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            io.hass.type=app
+            io.hass.name=SoBo
+            io.hass.description=Sonos-Jukebox als Home Assistant App
+            io.hass.url=https://github.com/JBosecker/SoBo
+          push: "false"
+          # Signieren erst, wenn Images veröffentlicht werden (Release, Phase 6)
+          cosign: "false"
