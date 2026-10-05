@@ -13,8 +13,9 @@ Stand: [`docs/STATUS.md`](docs/STATUS.md)
 |---|---|
 | `sobo/` | Die App (Supervisor-Build-Kontext): `config.yaml`, `Dockerfile`, `rootfs/` |
 | `sobo/backend/` | Python-Backend (FastAPI, Engine, Sonos-Adapter, SQLite) mit Tests |
-| `custom_components/sobo/` | HA-Integration für Webhook/Cloudhook (Phase 4) |
-| `frontend/` | Admin-SPA und Gast-Seite (Phasen 3–4) |
+| `custom_components/sobo/` | HA-Integration: Gastzugang per Webhook/Cloudhook, Entitäten |
+| `tests/` | Tests der Integration (`pytest-homeassistant-custom-component`) |
+| `frontend/guest/` | Quellen der Gast-Seite (Build: `scripts/build_guest_page.py`) |
 
 ## Entwicklung
 

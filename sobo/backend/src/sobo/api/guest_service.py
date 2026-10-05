@@ -50,6 +50,8 @@ class WaitAction(_Action):
     action: Literal["wait"]
     session: _Session
     since: int = Field(ge=0, le=2**53)
+    # Die Gast-Seite verkürzt die Wartezeit nach Abbrüchen (Plan 4.4); nie länger als im Admin.
+    timeout: int | None = Field(default=None, ge=5, le=60)
 
 
 class SearchAction(_Action):
@@ -146,7 +148,7 @@ class GuestService:
             case StateAction():
                 return 200, {"ok": True, "state": self.jb.guest_view(guest)}
             case WaitAction():
-                return await self._wait(guest, action.since)
+                return await self._wait(guest, action.since, action.timeout)
             case SearchAction():
                 return await self._search(guest, action.q)
             case SuggestAction():
@@ -169,7 +171,7 @@ class GuestService:
         guest = self.jb.join(nickname, token_hash, action.code)
         return 200, {"ok": True, "session": token, "state": self.jb.guest_view(guest)}
 
-    async def _wait(self, guest: Guest, since: int) -> Response:
+    async def _wait(self, guest: Guest, since: int, timeout: int | None = None) -> Response:
         access = self.jb.settings.guest_access
         notifier = self.jb.notifier
         if notifier.version > since:
@@ -182,7 +184,8 @@ class GuestService:
         cancel = asyncio.Event()
         self.open_polls[guest.id] = cancel
         try:
-            changed = await notifier.wait(since, access.long_poll_timeout, cancel)
+            limit = access.long_poll_timeout
+            changed = await notifier.wait(since, min(timeout or limit, limit), cancel)
         finally:
             if self.open_polls.get(guest.id) is cancel:
                 del self.open_polls[guest.id]
