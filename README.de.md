@@ -33,4 +33,5 @@ Die Admin-Oberfläche ist nur über Home Assistant (Ingress) erreichbar. Gäste
 erreichen ausschließlich die Jukebox-Funktionen über eine Nabu-Casa-Cloudhook-URL,
 die keine Rückschlüsse auf deine Home-Assistant-Adresse zulässt.
 
-Technische Details (auf Englisch): [README.md](README.md), [sobo/DOCS.md](sobo/DOCS.md).
+Technische Details (auf Englisch): [README.md](README.md), [sobo/DOCS.md](sobo/DOCS.md),
+Sicherheits-Checkliste: [docs/SECURITY.md](docs/SECURITY.md).

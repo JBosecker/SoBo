@@ -62,6 +62,7 @@ ignore = ["S101", "RUF001", "RUF002", "RUF003", "ASYNC109"]
 "src/sobo/sonos/fake_adapter.py" = ["S311"]
 "src/sobo/engine/fallback.py" = ["S311"]
 "src/sobo/engine/jukebox.py" = ["S311"]
+"loadtest/**" = ["S311"]
 "src/sobo/store/migrations/**" = ["E501", "I001"]
 
 [tool.mypy]

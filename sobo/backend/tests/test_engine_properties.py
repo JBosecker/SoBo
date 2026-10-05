@@ -8,7 +8,7 @@ from itertools import pairwise
 import pytest
 
 hypothesis = pytest.importorskip("hypothesis")
-from hypothesis import given  # noqa: E402
+from hypothesis import HealthCheck, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
 from sobo.engine.limits import sliding_budget  # noqa: E402
@@ -37,6 +37,8 @@ def _build(specs: list[tuple[int, bool, int]]) -> list[QueueItem]:
     return items
 
 
+# The first example can be slow on cold runners (imports); that is not a data problem.
+@settings(suppress_health_check=[HealthCheck.too_slow])
 @given(item_specs)
 def test_ranking_invariants(specs: list[tuple[int, bool, int]]) -> None:
     order = ranked(_build(specs))

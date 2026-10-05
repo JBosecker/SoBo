@@ -4,3 +4,4 @@ backend/.mypy_cache
 backend/.ruff_cache
 backend/.pytest_cache
 backend/.hypothesis
+backend/loadtest

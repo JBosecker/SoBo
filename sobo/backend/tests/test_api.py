@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("fastapi")
 import httpx
 
-from sobo.api.admin import create_admin_app
+from sobo.api.admin import REQUEST_HEADER, create_admin_app
 from sobo.api.internal import SECRET_HEADER, create_internal_app
 from sobo.clock import ManualClock
 from sobo.config import AppOptions
@@ -40,7 +40,9 @@ async def ctx(tmp_path: Path) -> AsyncIterator[AppContext]:
 
 def admin_client(ctx: AppContext, client: tuple[str, int] = INGRESS) -> httpx.AsyncClient:
     transport = httpx.ASGITransport(app=create_admin_app(ctx), client=client)
-    return httpx.AsyncClient(transport=transport, base_url="http://sobo")
+    return httpx.AsyncClient(
+        transport=transport, base_url="http://sobo", headers={REQUEST_HEADER: "1"}
+    )
 
 
 def internal_client(ctx: AppContext, secret: str | None = None) -> httpx.AsyncClient:
@@ -222,3 +224,29 @@ async def test_internal_active_and_skip(ctx: AppContext) -> None:
         assert (await client.post("/internal/active", json={"active": False})).status_code == 204
         assert ctx.jukebox.settings.active is False
         assert (await client.post("/internal/skip")).status_code == 204
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("POST", "/api/skip", None),
+        ("POST", "/api/jukebox", {"active": False}),
+        ("PUT", "/api/settings", {}),
+        ("POST", "/api/guest-access/rotate", None),
+    ],
+)
+async def test_admin_rejects_requests_without_csrf_header(
+    ctx: AppContext, method: str, path: str, body: object
+) -> None:
+    transport = httpx.ASGITransport(app=create_admin_app(ctx), client=INGRESS)
+    async with httpx.AsyncClient(transport=transport, base_url="http://sobo") as plain:
+        response = await plain.request(method, path, json=body)
+        assert response.status_code == 403
+        # A browser marks foreign requests; even with the header they are refused.
+        response = await plain.request(
+            method, path, json=body, headers={REQUEST_HEADER: "1", "Sec-Fetch-Site": "cross-site"}
+        )
+        assert response.status_code == 403
+        # Reading stays possible without the header.
+        assert (await plain.get("/api/status")).status_code == 200
+    assert ctx.jukebox.settings.active is True

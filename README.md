@@ -9,7 +9,8 @@ the browser or phone language. [Deutsche Kurzbeschreibung](README.de.md)
 
 Plan: [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) ·
 Status: [`docs/STATUS.md`](docs/STATUS.md) ·
-User guide: [`sobo/DOCS.md`](sobo/DOCS.md)
+User guide: [`sobo/DOCS.md`](sobo/DOCS.md) ·
+Security: [`docs/SECURITY.md`](docs/SECURITY.md)
 
 ## Layout
 
@@ -20,6 +21,7 @@ User guide: [`sobo/DOCS.md`](sobo/DOCS.md)
 | `custom_components/sobo/` | HA integration: guest access via webhook/cloudhook, entities |
 | `tests/` | Integration tests (`pytest-homeassistant-custom-component`) |
 | `frontend/guest/` | Guest page sources (build: `scripts/build_guest_page.py`) |
+| `sobo/backend/loadtest/` | Locust scenario (about 100 guests with long polling) |
 
 ## Development
 

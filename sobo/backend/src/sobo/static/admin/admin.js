@@ -406,7 +406,8 @@
   }
 
   async function api(method, path, body) {
-    const options = { method, headers: {}, cache: "no-store" };
+    // The custom header protects state-changing requests against CSRF (see admin.py).
+    const options = { method, headers: { "X-SoBo-Request": "1" }, cache: "no-store" };
     if (body !== undefined) {
       options.headers["Content-Type"] = "application/json";
       options.body = JSON.stringify(body);

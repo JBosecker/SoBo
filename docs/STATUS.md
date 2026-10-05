@@ -11,13 +11,14 @@ As of: 2026-10-05
 | 2 – Engine | Queue, ranking, sliding vote/suggestion budgets, limits (length, explicit, blocklist, cooldowns), base playlist, state machine, lookahead with fixing, `manual_override`, max volume, version counter/change signal, SQLite store + Alembic | ✔ |
 | 3 – Admin UI | Admin API (status, settings, moderation, guests, audit, Sonos lists, rotation) with ingress guard and CSP; UI with live view, guest access (QR code, printing, renewal), settings, log | ✔ |
 | 4 – Integration & guest access | Guest API (sessions, rate limits, long polling); integration `custom_components/sobo`: config flow (discovery + manual), webhook/cloudhook with rotation, POST proxy, entities; guest page with long polling and fallback | ✔ |
+| 5 – Hardening | AppArmor profile (backend in a child profile without capabilities, writes only to `/data` and `/tmp`) with a CI smoke test of the real image under the profile; fuzzing of guest actions, settings and internal reports (Hypothesis); in-process load test with 100 long-polling guests and a Locust scenario; CSRF protection of the admin API; static checks of the container permissions; security checklist in [`docs/SECURITY.md`](SECURITY.md) | ✔ |
 | – Language | English is the main language of the repository (code, comments, docs, commits). Admin UI, guest page, "jukebox is off" page, integration and app options are localized in English and German | ✔ |
 
 ## Tests
 
 | Area | Where | Result |
 |---|---|---|
-| Backend (engine, adapters, guest/admin API, store, QR) | `sobo/backend/tests` | 154 passed |
+| Backend (engine, adapters, guest/admin API, store, QR, fuzzing, load, container config) | `sobo/backend/tests` | 177 passed |
 | Guest page in the browser (Playwright/Chromium), incl. German locale | `sobo/backend/tests/test_guest_page.py` | 12 passed |
 | Admin UI in the browser, incl. German locale and fallback language | `sobo/backend/tests/test_admin_page.py` | 9 passed |
 | Integration (`pytest-homeassistant-custom-component`) | `tests/` | 29 passed (CI) |
@@ -88,7 +89,13 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
     (`en`, `de`); the language comes from `navigator.languages`, falling back to
     English. The HTML contains the English texts with `data-i18n` keys. The
     "jukebox is off" page (no JavaScript) is chosen by `Accept-Language`.
-19. **Demo data in English:** the simulated speakers are "Living Room" and "Kitchen",
+19. **Load test in two parts:** fast in-process checks in CI (`tests/test_load.py`)
+    plus a Locust scenario for a running app or the real cloudhook
+    (`sobo/backend/loadtest/`), instead of Locust only.
+20. **CSRF header for the admin API** (`X-SoBo-Request`), not in the plan: ingress
+    sessions are cookies, so state-changing requests need a header a foreign page
+    cannot send.
+21. **Demo data in English:** the simulated speakers are "Living Room" and "Kitchen",
     the demo playlist is "Party Basics".
 
 ## Security details
@@ -111,7 +118,8 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
   `home-assistant/builder/actions/build-image@2026.09.0`, for now without push and signing.
 - Condensed font on the guest page: Avenir Next Condensed (iOS), otherwise Roboto
   Condensed or Arial Narrow; without these the normal system font.
-- AppArmor profile follows in phase 5 (until then the Supervisor default profile).
+- The AppArmor profile is verified in CI on Ubuntu; on HAOS it is first exercised in the real test.
+- The backend runs as root inside its container (s6 overlay of the HA base image), limited by AppArmor.
 - Discovery host `127.0.0.1` requires HA Core on the host network (HAOS/Supervised: yes).
 - The store keeps timestamps with the UTC time zone (SQLModel ≥ 0.0.47 requires this).
 - Database growth: history and audit log are deleted after 30 days.
@@ -119,5 +127,4 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 
 ## Next steps
 
-- **Phase 5:** hardening (AppArmor, fuzzing of guest actions, load test, audits, docs EN/DE).
 - **Phase 6:** release v0.1 (publish and sign images, make the repository public, HACS).

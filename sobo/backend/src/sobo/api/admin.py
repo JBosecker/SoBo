@@ -194,6 +194,12 @@ ADMIN_CSP = "; ".join(
         "frame-ancestors 'self'",
     ]
 )
+# State-changing requests must carry this header. Browsers only send custom headers
+# cross-origin after a CORS preflight, which this app never allows: a foreign page
+# cannot trigger admin actions even with the user's ingress session (CSRF).
+REQUEST_HEADER = "X-SoBo-Request"
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
 SECURITY_HEADERS = {
     "Content-Security-Policy": ADMIN_CSP,
     "X-Content-Type-Options": "nosniff",
@@ -218,6 +224,11 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
         if client not in trusted:
             # For strangers nothing exists here (plan 6).
             return JSONResponse({"detail": "Not Found"}, status_code=404)
+        if request.method not in SAFE_METHODS and (
+            request.headers.get(REQUEST_HEADER) != "1"
+            or request.headers.get("Sec-Fetch-Site") == "cross-site"
+        ):
+            return JSONResponse({"error": "forbidden"}, status_code=403)
         response = await call_next(request)
         for header, value in SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
