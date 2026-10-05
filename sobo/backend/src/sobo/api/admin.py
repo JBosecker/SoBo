@@ -5,15 +5,18 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from importlib import resources
-from typing import Annotated, Any
+from pathlib import Path
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 
 from ..context import AppContext
 from ..engine.limits import RuleViolation
 from ..engine.settings import JukeboxSettings
+from ..qr import qr_svg
 from ..sonos.adapter import SonosError
 
 _LOG = logging.getLogger(__name__)
@@ -126,6 +129,15 @@ async def rotate(ctx: Ctx, actor: Actor) -> dict[str, Any]:
     return {"generation": ctx.rotation_requested}
 
 
+@router.get("/guest-access/qr.svg")
+async def guest_qr(ctx: Ctx, which: Literal["cloud", "local"] = "cloud") -> Response:
+    info = ctx.guest_access
+    url = info.url if which == "cloud" else info.local_url
+    if not url:
+        raise HTTPException(404, detail="no_guest_url")
+    return Response(qr_svg(url), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
+
+
 @router.get("/audit")
 async def audit(ctx: Ctx, limit: int = 100) -> list[dict[str, str]]:
     entries = ctx.jukebox.repo.recent_audit(max(1, min(limit, 500)))
@@ -152,6 +164,7 @@ async def speakers(ctx: Ctx) -> list[dict[str, Any]]:
 
 @router.get("/sonos/accounts")
 async def accounts(ctx: Ctx) -> list[dict[str, str]]:
+    await ctx.jukebox.ensure_speaker()
     found = await ctx.worker.call(lambda a: a.get_accounts(), timeout=15)
     return [
         {"account_id": a.account_id, "service": a.service_name, "nickname": a.nickname}
@@ -161,12 +174,35 @@ async def accounts(ctx: Ctx) -> list[dict[str, str]]:
 
 @router.get("/sonos/fallback-sources")
 async def fallback_sources(ctx: Ctx) -> list[dict[str, str]]:
+    await ctx.jukebox.ensure_speaker()
     found = await ctx.worker.call(lambda a: a.list_fallback_sources(), timeout=15)
     return [{"source_id": s.source_id, "name": s.name, "kind": s.kind} for s in found]
 
 
+ADMIN_DIR = Path(str(resources.files("sobo") / "static" / "admin"))
+
+# Ingress lädt die Seite im HA-Frontend (gleiche Herkunft) – frame-ancestors 'self'.
+ADMIN_CSP = "; ".join(
+    [
+        "default-src 'none'",
+        "script-src 'self'",
+        "style-src 'self'",
+        "img-src 'self' https: data:",
+        "connect-src 'self'",
+        "base-uri 'none'",
+        "form-action 'none'",
+        "frame-ancestors 'self'",
+    ]
+)
+SECURITY_HEADERS = {
+    "Content-Security-Policy": ADMIN_CSP,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+}
+
+
 def _index_html() -> str:
-    return (resources.files("sobo") / "static" / "admin.html").read_text(encoding="utf-8")
+    return (ADMIN_DIR / "index.html").read_text(encoding="utf-8")
 
 
 def create_admin_app(ctx: AppContext) -> FastAPI:
@@ -182,7 +218,12 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
         if client not in trusted:
             # Für Fremde existiert hier nichts (Plan 6).
             return JSONResponse({"detail": "Not Found"}, status_code=404)
-        return await call_next(request)
+        response = await call_next(request)
+        for header, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(header, value)
+        if not request.url.path.startswith("/assets/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
 
     @app.exception_handler(RuleViolation)
     async def _rule(_: Request, exc: RuleViolation) -> JSONResponse:
@@ -197,4 +238,5 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
         return _index_html()
 
     app.include_router(router)
+    app.mount("/assets", StaticFiles(directory=ADMIN_DIR), name="assets")
     return app

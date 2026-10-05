@@ -550,13 +550,21 @@ class Jukebox:
     async def _apply_speaker_config(self) -> bool:
         speaker = self.settings.speaker
         if not speaker.coordinator_uid:
-            self.last_error = "no_speaker"
             return False
         config = SpeakerConfig(speaker.coordinator_uid, tuple(speaker.members))
         if self._configured != config:
             await self.worker.call(lambda a: a.configure(config), timeout=30)
             self._configured = config
         return True
+
+    async def ensure_speaker(self) -> None:
+        """Lautsprecher konfigurieren (z. B. bevor die Admin-UI Konten abfragt).
+
+        Sonst geschieht das erst beim ersten Tick einer eingeschalteten Jukebox.
+        """
+        async with self._lock:
+            if not await self._apply_speaker_config():
+                raise RuleViolation("no_speaker")
 
     async def _deactivate(self) -> None:
         nxt = self.queue.next_item
@@ -588,6 +596,7 @@ class Jukebox:
             return
 
         if not await self._apply_speaker_config():
+            self.last_error = "no_speaker"
             self._set_state(JukeboxState.ERROR)
             return
 

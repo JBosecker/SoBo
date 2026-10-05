@@ -51,6 +51,7 @@ markers = ["browser: Browser-Tests der Gast-Seite (Playwright/Chromium)"]
 line-length = 100
 target-version = "py313"
 src = ["src", "tests"]
+extend-exclude = ["src/sobo/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "ASYNC"]
@@ -73,3 +74,7 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = ["soco", "soco.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sobo.vendor.*"]
+ignore_errors = true

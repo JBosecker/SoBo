@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>SoBo</title>
+<link rel="stylesheet" href="assets/admin.css">
+<script src="assets/admin.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">SoBo</span>
+    <span id="state-pill" class="pill">…</span>
+  </div>
+  <label class="power">
+    <input type="checkbox" id="power" role="switch" aria-describedby="power-hint">
+    <span class="power-track" aria-hidden="true"><span class="power-thumb"></span></span>
+    <span id="power-label">Jukebox aus</span>
+  </label>
+  <p id="power-hint" class="visually-hidden">Schaltet die Jukebox für Gäste an oder aus.</p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Bereiche">
+  <button role="tab" id="tab-live" aria-controls="panel-live" aria-selected="true">Live</button>
+  <button role="tab" id="tab-access" aria-controls="panel-access" aria-selected="false">Gastzugang</button>
+  <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">Einstellungen</button>
+  <button role="tab" id="tab-log" aria-controls="panel-log" aria-selected="false">Protokoll</button>
+</nav>
+
+<main>
+  <div id="banner" class="banner" role="alert" hidden>
+    <p id="banner-text"></p>
+    <button type="button" id="banner-action" class="button" hidden></button>
+  </div>
+
+  <!-- ===================================================== Live -->
+  <section id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="panel live">
+    <div class="live-main">
+      <article class="now" aria-labelledby="now-heading">
+        <h2 id="now-heading">Läuft gerade</h2>
+        <div class="now-body">
+          <img id="now-art" class="now-art" alt="" hidden>
+          <div class="now-text">
+            <p id="now-title" class="now-title">Nichts</p>
+            <p id="now-meta" class="muted"></p>
+            <div class="progress" aria-hidden="true"><span id="now-bar"></span></div>
+          </div>
+        </div>
+        <p id="next-line" class="next-line muted"></p>
+        <div class="row">
+          <button type="button" class="button" id="skip">Überspringen</button>
+          <button type="button" class="button" id="freeze" aria-pressed="false">Warteschlange anhalten</button>
+        </div>
+      </article>
+
+      <section aria-labelledby="queue-heading">
+        <div class="section-head">
+          <h2 id="queue-heading">Warteschlange</h2>
+          <span id="queue-count" class="muted"></span>
+        </div>
+        <p id="queue-empty" class="empty">Noch keine Wünsche. Läuft die Basis-Playlist, füllt sie die Pausen.</p>
+        <ol id="queue" class="strips"></ol>
+      </section>
+    </div>
+
+    <aside class="live-side" aria-labelledby="guests-heading">
+      <div class="section-head">
+        <h2 id="guests-heading">Gäste</h2>
+        <span id="guest-count" class="muted"></span>
+      </div>
+      <p id="guests-empty" class="empty">Noch niemand dabei.</p>
+      <ul id="guests" class="guests"></ul>
+      <h2 id="history-heading" class="history-heading" hidden>Zuletzt gespielt</h2>
+      <ol id="history" class="history"></ol>
+    </aside>
+  </section>
+
+  <!-- ===================================================== Gastzugang -->
+  <section id="panel-access" role="tabpanel" aria-labelledby="tab-access" class="panel access" hidden>
+    <div class="access-card">
+      <div class="qr-wrap">
+        <img id="qr" class="qr" alt="QR-Code für den Gastzugang" hidden>
+        <p id="qr-missing" class="empty"></p>
+      </div>
+      <div class="access-text">
+        <h2>So kommen Gäste rein</h2>
+        <p id="access-explain" class="muted"></p>
+        <p class="url-line"><code id="guest-url"></code></p>
+        <div class="row">
+          <button type="button" class="button" id="copy-url">Link kopieren</button>
+          <button type="button" class="button" id="print">QR-Code drucken</button>
+        </div>
+        <dl class="facts">
+          <dt>Integration</dt><dd id="fact-integration"></dd>
+          <dt>Nabu Casa</dt><dd id="fact-cloud"></dd>
+        </dl>
+        <div class="rotate">
+          <button type="button" class="button danger" id="rotate">Gastzugang erneuern</button>
+          <div id="rotate-confirm" class="confirm" hidden>
+            <p>Der alte QR-Code funktioniert danach nicht mehr, und alle Gäste müssen neu beitreten.</p>
+            <div class="row">
+              <button type="button" class="button danger" id="rotate-yes">Erneuern</button>
+              <button type="button" class="button" id="rotate-no">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <form class="settings-form" data-section="guest_access" novalidate></form>
+  </section>
+
+  <!-- ===================================================== Einstellungen -->
+  <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" class="panel" hidden>
+    <form class="settings-form" data-section="speaker" novalidate></form>
+    <form class="settings-form" data-section="music" novalidate></form>
+    <form class="settings-form" data-section="votes" novalidate></form>
+    <form class="settings-form" data-section="limits" novalidate></form>
+    <form class="settings-form" data-section="schedule" novalidate></form>
+  </section>
+
+  <!-- ===================================================== Protokoll -->
+  <section id="panel-log" role="tabpanel" aria-labelledby="tab-log" class="panel" hidden>
+    <table class="log">
+      <thead><tr><th scope="col">Zeit</th><th scope="col">Wer</th><th scope="col">Was</th><th scope="col">Details</th></tr></thead>
+      <tbody id="log"></tbody>
+    </table>
+  </section>
+</main>
+
+<!-- Nur für den Druck sichtbar -->
+<section class="print-sheet" aria-hidden="true">
+  <h1>Wünsch dir einen Song!</h1>
+  <img id="print-qr" alt="">
+  <p class="print-steps">Mit der Handykamera scannen, Namen eingeben, Song suchen und vorschlagen.</p>
+  <p id="print-code" class="print-code" hidden></p>
+</section>
+
+<p id="toast" class="toast" role="status" hidden></p>
+</body>
+</html>

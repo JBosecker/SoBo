@@ -62,8 +62,45 @@ async def test_admin_rejects_non_ingress(ctx: AppContext, path: str) -> None:
 async def test_admin_index_via_ingress(ctx: AppContext) -> None:
     async with admin_client(ctx) as client:
         response = await client.get("/")
-    assert response.status_code == 200
-    assert "Hello SoBo" in response.text
+        assert response.status_code == 200
+        assert "<title>SoBo</title>" in response.text
+        assert 'src="assets/admin.js"' in response.text  # relativ wegen Ingress-Präfix
+        csp = response.headers["content-security-policy"]
+        assert "script-src 'self'" in csp and "frame-ancestors 'self'" in csp
+        assert "unsafe-inline" not in csp
+        assert response.headers["cache-control"] == "no-store"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        script = await client.get("/assets/admin.js")
+        assert script.status_code == 200
+        assert "javascript" in script.headers["content-type"]
+        assert "innerHTML" not in script.text
+        css = await client.get("/assets/admin.css")
+        assert css.status_code == 200
+    async with admin_client(ctx, STRANGER) as client:
+        assert (await client.get("/assets/admin.js")).status_code == 404
+
+
+async def test_guest_qr_code(ctx: AppContext) -> None:
+    async with admin_client(ctx) as client:
+        assert (await client.get("/api/guest-access/qr.svg")).status_code == 404
+        ctx.guest_access.url = "https://hooks.nabu.casa/abc"
+        response = await client.get("/api/guest-access/qr.svg")
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("image/svg+xml")
+        assert response.text.startswith("<svg") and "<path" in response.text
+        assert (await client.get("/api/guest-access/qr.svg?which=local")).status_code == 404
+        assert (await client.get("/api/guest-access/qr.svg?which=evil")).status_code == 422
+
+
+async def test_sonos_lists_need_speaker(ctx: AppContext) -> None:
+    settings = ctx.jukebox.settings.model_copy(deep=True)
+    settings.speaker.coordinator_uid = None
+    await ctx.jukebox.update_settings(settings, "test")
+    async with admin_client(ctx) as client:
+        response = await client.get("/api/sonos/accounts")
+        assert (response.status_code, response.json()) == (409, {"error": "no_speaker"})
+    # Die Abfrage selbst darf keinen Störungszustand hinterlassen
+    assert ctx.jukebox.last_error is None
 
 
 @pytest.mark.parametrize("secret", ["", "falsch", "x" * 43])
