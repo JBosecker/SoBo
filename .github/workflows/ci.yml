@@ -15,7 +15,7 @@ jobs:
       run:
         working-directory: sobo/backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
@@ -38,7 +38,7 @@ jobs:
   app-config:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: App-Konfiguration prüfen
         uses: frenck/action-addon-linter@v2
         with:
@@ -51,7 +51,7 @@ jobs:
       matrix:
         arch: [amd64, aarch64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Image bauen (ohne Push)
         uses: home-assistant/builder@master
         with:
