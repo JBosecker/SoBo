@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -128,28 +129,31 @@ async def test_response_survives_cloud_relay(
 # --------------------------------------------------------------------------- Cloudhook
 
 
+class CloudNotAvailableError(Exception):
+    """Ersatz für cloud.CloudNotAvailable."""
+
+
 @pytest.fixture
 def cloud() -> Generator[dict[str, AsyncMock]]:
-    with (
-        patch("homeassistant.components.cloud.async_active_subscription", return_value=True),
-        patch("homeassistant.components.cloud.async_is_logged_in", return_value=True),
-        patch(
-            "homeassistant.components.cloud.async_get_or_create_cloudhook",
-            return_value=CLOUD_URL,
-        ) as create,
-        patch("homeassistant.components.cloud.async_delete_cloudhook") as delete,
-        patch(
-            "homeassistant.components.cloud.async_listen_connection_change",
-            return_value=lambda: None,
-        ),
-    ):
-        yield {"create": create, "delete": delete}
+    """Nabu Casa verbunden – ersetzt das HA-Modul `cloud` (in Tests nicht importierbar)."""
+    fake = SimpleNamespace(
+        async_active_subscription=lambda hass: True,
+        async_is_logged_in=lambda hass: True,
+        async_get_or_create_cloudhook=AsyncMock(return_value=CLOUD_URL),
+        async_delete_cloudhook=AsyncMock(),
+        async_listen_connection_change=lambda hass, target: lambda: None,
+        CloudNotAvailable=CloudNotAvailableError,
+    )
+    with patch("custom_components.sobo.guest_access.cloud_api", return_value=fake):
+        yield {
+            "create": fake.async_get_or_create_cloudhook,
+            "delete": fake.async_delete_cloudhook,
+        }
 
 
 async def test_cloudhook_reported(
     hass: HomeAssistant, client: AsyncMock, cloud: dict[str, AsyncMock]
 ) -> None:
-    hass.config.components.add("cloud")
     entry = await setup_sobo(hass)
     cloud["create"].assert_awaited_once_with(hass, entry.data[CONF_WEBHOOK_ID])
     url, _local, connected = client.report_guest_access.call_args.args
@@ -170,7 +174,6 @@ async def test_rotation_requested_by_app(
     cloud: dict[str, AsyncMock],
     hass_client_no_auth: ClientSessionGenerator,
 ) -> None:
-    hass.config.components.add("cloud")
     entry = await setup_sobo(hass)
     old_id = entry.data[CONF_WEBHOOK_ID]
     http = await hass_client_no_auth()
@@ -221,7 +224,6 @@ async def test_unregister_when_inactive(
 async def test_unload_keeps_cloudhook_remove_deletes_it(
     hass: HomeAssistant, client: AsyncMock, cloud: dict[str, AsyncMock]
 ) -> None:
-    hass.config.components.add("cloud")
     entry = await setup_sobo(hass)
     webhook_id = entry.data[CONF_WEBHOOK_ID]
     assert await hass.config_entries.async_unload(entry.entry_id)

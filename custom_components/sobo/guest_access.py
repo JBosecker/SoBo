@@ -120,9 +120,7 @@ class GuestAccess:
             self._set_webhook_id(webhook.async_generate_id())
         self._register()
         await self._refresh_urls()
-        if "cloud" in self.hass.config.components:
-            from homeassistant.components import cloud
-
+        if (cloud := cloud_api(self.hass)) is not None:
             self._unsub_cloud = cloud.async_listen_connection_change(
                 self.hass, self._on_cloud_change
             )
@@ -260,12 +258,25 @@ class GuestAccess:
         )
 
 
+def cloud_api(hass: HomeAssistant) -> Any | None:
+    """Das HA-Modul `cloud`, falls geladen – sonst None (kein Nabu Casa).
+
+    Bewusst als eigene Funktion: Ohne installiertes `hass_nabucasa` ist das Modul
+    nicht importierbar, und Tests ersetzen hier die Cloud-Anbindung.
+    """
+    if "cloud" not in hass.config.components:
+        return None
+    try:
+        from homeassistant.components import cloud
+    except ImportError:
+        return None
+    return cloud
+
+
 async def _get_cloudhook(hass: HomeAssistant, webhook_id: str) -> tuple[str | None, bool | None]:
     """Cloudhook-URL holen oder anlegen; (None, False/None) ohne Nabu Casa."""
-    if "cloud" not in hass.config.components:
+    if (cloud := cloud_api(hass)) is None:
         return None, None
-    from homeassistant.components import cloud
-
     if not cloud.async_active_subscription(hass):
         return None, False
     try:
@@ -276,10 +287,8 @@ async def _get_cloudhook(hass: HomeAssistant, webhook_id: str) -> tuple[str | No
 
 
 async def delete_cloudhook(hass: HomeAssistant, webhook_id: str) -> None:
-    if "cloud" not in hass.config.components:
+    if (cloud := cloud_api(hass)) is None:
         return
-    from homeassistant.components import cloud
-
     if not cloud.async_is_logged_in(hass):
         return
     try:

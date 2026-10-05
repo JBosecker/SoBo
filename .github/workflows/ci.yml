@@ -77,6 +77,8 @@ jobs:
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
+    # HACS lädt hacs.json/manifest.json ohne Anmeldung – bei privatem Repo immer rot.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - uses: hacs/action@main
