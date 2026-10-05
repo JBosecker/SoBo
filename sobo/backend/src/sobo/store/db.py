@@ -27,7 +27,7 @@ _OPEN_STATES = (ItemState.QUEUED.value, ItemState.NEXT.value, ItemState.PLAYING.
 
 
 def _utc(value: datetime) -> datetime:
-    """SQLite speichert ohne Zeitzone; alles ist UTC."""
+    """Beim Lesen immer UTC mit Zeitzone (ältere SQLModel-Versionen liefern naiv)."""
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
@@ -35,12 +35,14 @@ def _opt_utc(value: datetime | None) -> datetime | None:
     return _utc(value) if value is not None else None
 
 
-def _naive(value: datetime) -> datetime:
-    return value.astimezone(UTC).replace(tzinfo=None)
+def _db_time(value: datetime) -> datetime:
+    """Zum Speichern: UTC mit Zeitzone. Neuere SQLModel-Versionen (UTCDateTime)
+    lehnen naive Werte ab; ältere ignorieren die Zeitzone auf SQLite."""
+    return value.astimezone(UTC)
 
 
-def _opt_naive(value: datetime | None) -> datetime | None:
-    return _naive(value) if value is not None else None
+def _opt_db_time(value: datetime | None) -> datetime | None:
+    return _db_time(value) if value is not None else None
 
 
 def make_engine(url: str) -> Engine:
@@ -82,7 +84,7 @@ class SqlRepository:
     # ------------------------------------------------------------------ Laden
 
     def load(self) -> Snapshot:
-        cutoff = _naive(self._clock.now() - HISTORY_WINDOW)
+        cutoff = _db_time(self._clock.now() - HISTORY_WINDOW)
         with Session(self._engine) as session:
             settings_row = session.get(SettingsRow, SETTINGS_KEY)
             settings = None
@@ -156,7 +158,7 @@ class SqlRepository:
     def save_settings(self, settings: JukeboxSettings) -> None:
         with Session(self._engine) as session:
             row = session.get(SettingsRow, SETTINGS_KEY)
-            now = _naive(self._clock.now())
+            now = _db_time(self._clock.now())
             value = settings.model_dump_json()
             if row is None:
                 row = SettingsRow(key=SETTINGS_KEY, value=value, version=1, updated_at=now)
@@ -174,8 +176,8 @@ class SqlRepository:
                     id=guest.id,
                     session_token_hash=guest.token_hash,
                     nickname=guest.nickname,
-                    created_at=_naive(guest.created_at),
-                    last_seen=_naive(guest.last_seen),
+                    created_at=_db_time(guest.created_at),
+                    last_seen=_db_time(guest.last_seen),
                     blocked=guest.blocked,
                 )
             )
@@ -204,11 +206,11 @@ class SqlRepository:
                     meta=track.meta,
                     origin=item.origin.value,
                     submitted_by=item.submitted_by,
-                    submitted_at=_naive(item.submitted_at),
+                    submitted_at=_db_time(item.submitted_at),
                     state=item.state.value,
                     pinned=item.pinned,
-                    started_at=_opt_naive(item.started_at),
-                    finished_at=_opt_naive(item.finished_at),
+                    started_at=_opt_db_time(item.started_at),
+                    finished_at=_opt_db_time(item.finished_at),
                     removed_reason=item.removed_reason,
                 )
             )
@@ -220,7 +222,7 @@ class SqlRepository:
                 VoteRow(
                     guest_id=vote.guest_id,
                     queue_item_id=vote.item_id,
-                    created_at=_naive(vote.created_at),
+                    created_at=_db_time(vote.created_at),
                     counts=vote.counts,
                 )
             )
@@ -230,7 +232,7 @@ class SqlRepository:
         with Session(self._engine) as session:
             session.add(
                 AuditRow(
-                    at=_naive(entry.at), actor=entry.actor, action=entry.action, detail=entry.detail
+                    at=_db_time(entry.at), actor=entry.actor, action=entry.action, detail=entry.detail
                 )
             )
             session.commit()
@@ -244,7 +246,7 @@ class SqlRepository:
 
     def purge_history(self, older_than: timedelta) -> None:
         """Aufbewahrungsfrist (Plan 6, Datenschutz): alte Einträge löschen."""
-        cutoff = _naive(self._clock.now() - older_than)
+        cutoff = _db_time(self._clock.now() - older_than)
         closed_and_old = (
             col(QueueItemRow.state).not_in(_OPEN_STATES),
             col(QueueItemRow.submitted_at) < cutoff,
