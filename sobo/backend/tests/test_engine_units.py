@@ -19,7 +19,7 @@ from sobo.sonos.fixtures import fake_catalog
 T0 = datetime(2026, 1, 1, 20, 0, tzinfo=UTC)
 
 
-# --------------------------------------------------------------------------- Änderungssignal
+# --------------------------------------------------------------------------- change signal
 
 
 @pytest.mark.anyio
@@ -126,7 +126,7 @@ def test_search_cache_expiry() -> None:
     assert cache.get(ids[0]) is None
 
 
-# --------------------------------------------------------------------------- Einstellungen
+# --------------------------------------------------------------------------- settings
 
 
 @pytest.mark.parametrize(

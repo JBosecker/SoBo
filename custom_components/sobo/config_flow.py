@@ -1,4 +1,4 @@
-"""Config-Flow: Kopplung per Supervisor-Discovery oder manuell (Plan 3.3)."""
+"""Config flow: pairing via Supervisor discovery or manually (plan 3.3)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ TITLE = "SoBo"
 
 
 async def _validate(session: aiohttp.ClientSession, data: dict[str, Any]) -> str | None:
-    """Gibt einen Fehler-Schlüssel zurück oder None."""
+    """Return an error key or None."""
     client = SoboClient(session, data[CONF_HOST], data[CONF_PORT], data[CONF_SECRET])
     try:
         await client.status()
@@ -43,7 +43,7 @@ class SoboConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_SECRET: str(config[CONF_SECRET]),
         }
         await self.async_set_unique_id(DOMAIN)
-        # Bereits eingerichtet: neue Verbindungsdaten übernehmen (z. B. neues Secret).
+        # Already set up: take over the new connection data (e.g. a new secret).
         self._abort_if_unique_id_configured(updates=data)
         self._discovered = data
         self._app_name = discovery_info.name or "SoBo"
@@ -65,9 +65,9 @@ class SoboConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Manuell, z. B. für Entwicklung ohne Supervisor."""
-        # Nur eine Instanz. Bewusst über die Unique-ID statt `single_config_entry`:
-        # Letzteres würde auch die Discovery abbrechen, die ein neues Secret übernimmt.
+        """Manual setup, e.g. for development without a Supervisor."""
+        # Only one instance. Deliberately via the unique ID instead of `single_config_entry`:
+        # the latter would also abort the discovery that hands over a new secret.
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
         errors: dict[str, str] = {}

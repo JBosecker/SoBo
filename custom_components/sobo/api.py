@@ -1,4 +1,4 @@
-"""Client für die interne API der SoBo-App (nur 127.0.0.1, Shared Secret)."""
+"""Client for the internal API of the SoBo app (127.0.0.1 only, shared secret)."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ from .const import REQUEST_TIMEOUT, SECRET_HEADER
 
 
 class SoboApiError(Exception):
-    """App nicht erreichbar oder unerwartete Antwort."""
+    """App not reachable or unexpected response."""
 
 
 class SoboAuthError(SoboApiError):
-    """Secret abgelehnt (die App antwortet dann mit 404)."""
+    """Secret rejected (the app then answers 404)."""
 
 
 class SoboClient:
@@ -40,7 +40,7 @@ class SoboClient:
                 timeout=aiohttp.ClientTimeout(total=timeout),
             ) as response:
                 if response.status == 404:
-                    raise SoboAuthError("Secret abgelehnt")
+                    raise SoboAuthError("Secret rejected")
                 if response.status >= 400:
                     raise SoboApiError(f"HTTP {response.status}")
                 if response.status == 204:
@@ -52,11 +52,11 @@ class SoboClient:
     async def status(self) -> dict[str, Any]:
         data = await self._request("GET", "/status")
         if not isinstance(data, dict):
-            raise SoboApiError("Ungültige Statusantwort")
+            raise SoboApiError("Invalid status response")
         return data
 
     async def guest_action(self, body: bytes, timeout: float) -> tuple[int, str]:
-        """Leitet eine Gast-Aktion unverändert weiter und gibt (Status, JSON-Text) zurück."""
+        """Forward a guest action unchanged and return (status, JSON text)."""
         try:
             async with self._session.post(
                 f"{self._base}/guest",
@@ -65,7 +65,7 @@ class SoboClient:
                 timeout=aiohttp.ClientTimeout(total=timeout),
             ) as response:
                 if response.status == 404:
-                    raise SoboAuthError("Secret abgelehnt")
+                    raise SoboAuthError("Secret rejected")
                 return response.status, await response.text()
         except (aiohttp.ClientError, TimeoutError) as err:
             raise SoboApiError(str(err) or type(err).__name__) from err

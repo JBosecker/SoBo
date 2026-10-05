@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="{{CSP}}">
-<!-- Kein Referer an das Cover-CDN: die Seiten-URL ist der Zugangsschlüssel. -->
+<!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#1e2433">
@@ -12,30 +12,31 @@
 <style>{{STYLE}}</style>
 </head>
 <body>
+<!-- Texts are English by default; app.js swaps in the phone language (data-i18n). -->
 <main id="app" aria-live="polite">
 
   <section id="view-loading" class="view center">
-    <p class="quiet">Verbinde mit der Jukebox …</p>
+    <p class="quiet" data-i18n="connecting">Connecting to the jukebox …</p>
   </section>
 
   <section id="view-join" class="view join" hidden>
-    <h1 class="join-title">Was soll als Nächstes laufen?</h1>
-    <p class="quiet">Such dir Songs aus, schlag sie vor und stimm für die anderer Gäste ab.</p>
+    <h1 class="join-title" data-i18n="join_title">What should play next?</h1>
+    <p class="quiet" data-i18n="join_intro">Find songs, suggest them and vote for other guests' picks.</p>
     <form id="join-form" class="join-form" autocomplete="off" novalidate>
-      <label for="join-name">Dein Name auf der Party</label>
+      <label for="join-name" data-i18n="join_name">Your name at the party</label>
       <input id="join-name" name="nickname" maxlength="24" required enterkeyhint="go" autocapitalize="words">
       <div id="join-code-row" hidden>
-        <label for="join-code">Code vom Gastgeber</label>
+        <label for="join-code" data-i18n="join_code">Code from the host</label>
         <input id="join-code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="8">
       </div>
-      <button type="submit" class="primary">Mitmachen</button>
+      <button type="submit" class="primary" data-i18n="join_button">Join in</button>
       <p id="join-error" class="error" role="alert" hidden></p>
     </form>
   </section>
 
   <section id="view-off" class="view center" hidden>
-    <h1>Die Jukebox ist gerade aus.</h1>
-    <p class="quiet">Sobald der Gastgeber sie einschaltet, geht es hier weiter.</p>
+    <h1 data-i18n="off_title">The jukebox is off right now.</h1>
+    <p class="quiet" data-i18n="off_text">As soon as the host turns it on, things continue here.</p>
   </section>
 
   <section id="view-main" class="view" hidden>
@@ -45,33 +46,33 @@
         <div class="disc"><img id="now-art" alt="" hidden><span class="spindle"></span></div>
       </div>
       <div class="now-text">
-        <p class="now-label">Läuft gerade</p>
-        <h1 id="now-title">Noch nichts</h1>
+        <p class="now-label" data-i18n="now_label">Now playing</p>
+        <h1 id="now-title" data-i18n="nothing_yet">Nothing yet</h1>
         <p id="now-artist" class="now-artist"></p>
         <p id="next-line" class="next-line" hidden></p>
       </div>
     </header>
 
     <form id="search-form" class="search" role="search" autocomplete="off">
-      <label for="search" class="visually-hidden">Song oder Interpret suchen</label>
-      <input id="search" type="search" placeholder="Song oder Interpret suchen" enterkeyhint="search" maxlength="80">
-      <button type="button" id="search-clear" class="ghost" hidden>Fertig</button>
+      <label for="search" class="visually-hidden" data-i18n="search_label">Search for a song or artist</label>
+      <input id="search" type="search" placeholder="Search for a song or artist" data-i18n-attr="placeholder:search_label" enterkeyhint="search" maxlength="80">
+      <button type="button" id="search-clear" class="ghost" hidden data-i18n="done">Done</button>
     </form>
 
-    <section id="results" class="results" hidden aria-label="Suchergebnisse">
+    <section id="results" class="results" hidden aria-label="Search results" data-i18n-attr="aria-label:results_label">
       <p id="results-note" class="quiet"></p>
       <ul id="results-list" class="strips"></ul>
     </section>
 
-    <section id="queue" aria-label="Warteschlange">
-      <h2 class="queue-title">Als Nächstes gewünscht</h2>
-      <p id="queue-empty" class="quiet" hidden>Noch keine Wünsche. Such oben nach einem Song und schlag ihn vor.</p>
+    <section id="queue" aria-label="Queue" data-i18n-attr="aria-label:queue_label">
+      <h2 class="queue-title" data-i18n="queue_title">Requested next</h2>
+      <p id="queue-empty" class="quiet" hidden data-i18n="queue_empty">No requests yet. Search for a song above and suggest it.</p>
       <ol id="queue-list" class="strips"></ol>
     </section>
 
     <footer class="me">
       <p id="me-line"></p>
-      <p id="cover-note" class="fine" hidden>Cover werden direkt von Apple geladen.</p>
+      <p id="cover-note" class="fine" hidden data-i18n="cover_note">Covers are loaded directly from Apple.</p>
     </footer>
   </section>
 

@@ -1,8 +1,8 @@
-"""Persistenz-Schnittstelle der Engine.
+"""Persistence interface of the engine.
 
-Die Engine hält ihren Zustand im Speicher und schreibt Änderungen sofort durch
-(write-through). Beim Start lädt sie den letzten Stand. `MemoryRepository`
-dient Tests; die SQLite-Implementierung liegt in `sobo.store`.
+The engine keeps its state in memory and writes changes through immediately
+(write-through). On start it loads the last state. `MemoryRepository` is for
+tests; the SQLite implementation lives in `sobo.store`.
 """
 
 from __future__ import annotations

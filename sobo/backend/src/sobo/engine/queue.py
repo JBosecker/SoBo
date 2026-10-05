@@ -1,4 +1,4 @@
-"""Die führende Queue liegt in SoBo (Plan 5.1). Reine Datenstruktur ohne I/O."""
+"""The leading queue lives in SoBo (plan 5.1). Pure data structure without I/O."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class JukeboxQueue:
         return self._first(ItemState.NEXT)
 
     def waiting(self) -> list[QueueItem]:
-        """Wartende Gast-/Admin-Titel in Ranking-Reihenfolge (ohne Fallback)."""
+        """Waiting guest/admin tracks in ranking order (without fallback tracks)."""
         return ranked(
             i
             for i in self._items.values()
@@ -81,7 +81,7 @@ class JukeboxQueue:
         return items[:limit]
 
     def prune(self, keep_closed: int = 500) -> None:
-        """Hält gespielte/entfernte Einträge im Speicher begrenzt (DB behält alles)."""
+        """Keep played/removed entries bounded in memory (the database keeps everything)."""
         closed = [i for i in self._items.values() if not i.is_open]
         if len(closed) <= keep_closed:
             return

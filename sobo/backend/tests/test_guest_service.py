@@ -1,4 +1,4 @@
-"""Gast-API: Aktionen, Sessions, Limits, Long Polling (Plan 6, 9)."""
+"""Guest API: actions, sessions, limits, long polling (plan 6, 9)."""
 
 from __future__ import annotations
 
@@ -118,12 +118,12 @@ async def test_rotation_invalidates_sessions(service: GuestService, jukebox: Juk
     ("raw", "expected"),
     [
         ("  Mia  ", "Mia"),
-        ("Jo‮hannes", "Johannes"),  # Bidi-Override entfernt
+        ("Jo‮hannes", "Johannes"),  # bidi override removed
         ("a\nb\tc", "abc"),
         ("x" * 40, "x" * 24),
         ("   ", None),
         ("!!!", None),
-        ("<script>", "<script>"),  # wird nur per textContent gerendert
+        ("<script>", "<script>"),  # only ever rendered via textContent
         ("Zoë 🎉", "Zoë 🎉"),
     ],
 )
@@ -286,7 +286,7 @@ def test_keyed_limiter_lru() -> None:
     limiter = KeyedRateLimiter(1, 0.0001, max_keys=2, clock=lambda: 0.0)
     assert limiter.allow("a") and not limiter.allow("a")
     assert limiter.allow("b") and limiter.allow("c")
-    assert limiter.allow("a")  # "a" wurde verdrängt → neuer Bucket
+    assert limiter.allow("a")  # "a" was evicted → new bucket
 
 
 async def test_wait_respects_shorter_client_timeout(

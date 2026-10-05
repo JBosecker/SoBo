@@ -1,4 +1,4 @@
-"""SoBo-Integration: öffentlicher Gast-Einstieg (Webhook/Cloudhook) und Entitäten."""
+"""SoBo integration: public guest entry point (webhook/cloudhook) and entities."""
 
 from __future__ import annotations
 
@@ -35,8 +35,8 @@ def _load_page() -> str:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SoboConfigEntry) -> bool:
-    # Eigene Session: Viele gleichzeitige Long-Polls gehen an denselben Host,
-    # HAs gemeinsame Session begrenzt auf 100 Verbindungen pro Host.
+    # Own session: many concurrent long polls go to the same host, and HA's shared
+    # session is limited to 100 connections per host.
     session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=0, limit_per_host=0))
     try:
         client = SoboClient(
@@ -73,6 +73,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: SoboConfigEntry) -> boo
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: SoboConfigEntry) -> None:
-    """Integration gelöscht: Cloudhook entfernen, damit die URL nicht weiterlebt."""
+    """Integration removed: delete the cloudhook so the URL does not live on."""
     if webhook_id := entry.data.get(CONF_WEBHOOK_ID):
         await delete_cloudhook(hass, webhook_id)

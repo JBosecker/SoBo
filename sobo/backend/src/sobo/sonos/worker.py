@@ -1,4 +1,4 @@
-"""Serialisiert alle (synchronen) Sonos-Aufrufe über einen dedizierten Thread (Plan 4.2)."""
+"""Serialises all (synchronous) Sonos calls through a dedicated thread (plan 4.2)."""
 
 from __future__ import annotations
 
@@ -21,23 +21,23 @@ class SonosWorker:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="sonos")
 
     async def call(self, fn: Callable[[SonosAdapter], T], timeout: float | None = None) -> T:
-        """Führt `fn(adapter)` im Sonos-Thread aus.
+        """Run `fn(adapter)` on the Sonos thread.
 
-        Unerwartete Ausnahmen werden in `SonosError` verpackt, damit die Engine
-        nur einen Fehlertyp behandeln muss. Bei Zeitüberschreitung läuft der
-        Aufruf im Thread weiter; nachfolgende Aufrufe warten dahinter.
+        Unexpected exceptions are wrapped in `SonosError` so the engine only has to
+        handle one error type. On timeout the call keeps running in the thread;
+        subsequent calls queue up behind it.
         """
         loop = asyncio.get_running_loop()
         future = loop.run_in_executor(self._executor, fn, self.adapter)
         try:
             return await asyncio.wait_for(future, timeout or self.timeout)
         except TimeoutError as err:
-            _LOG.warning("Sonos-Aufruf hat das Zeitlimit überschritten")
-            raise SonosTimeout("Zeitüberschreitung bei Sonos") from err
+            _LOG.warning("Sonos call timed out")
+            raise SonosTimeout("Sonos call timed out") from err
         except SonosError:
             raise
         except Exception as err:
-            _LOG.exception("Unerwarteter Fehler im Sonos-Adapter")
+            _LOG.exception("Unexpected error in the Sonos adapter")
             raise SonosError(str(err)) from err
 
     def shutdown(self) -> None:

@@ -1,5 +1,5 @@
-"""App-Optionen aus `/data/options.json` (vom Supervisor) plus Umgebungsvariablen
-für die Entwicklung."""
+"""App options from `/data/options.json` (written by the Supervisor) plus environment
+variables for development."""
 
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ class AppOptions(BaseModel):
     log_level: str = "info"
     fake_sonos: bool = False
     data_dir: Path = Path("/data")
-    # Admin-UI über Ingress (muss von der Supervisor-Bridge erreichbar sein)
-    host: str = "0.0.0.0"  # noqa: S104 – Ingress kommt über das hassio-Netz
+    # Admin UI via ingress (must be reachable from the Supervisor bridge)
+    host: str = "0.0.0.0"  # noqa: S104 – ingress arrives via the hassio network
     port: int = 8737
-    # Interne API für die Integration: nur lokal, HA Core läuft ebenfalls im Host-Netz
+    # Internal API for the integration: local only, HA Core also uses the host network
     internal_host: str = "127.0.0.1"
     internal_port: int = 8738
     trusted_ingress: frozenset[str] = Field(default_factory=lambda: frozenset({INGRESS_IP}))

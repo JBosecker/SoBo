@@ -1,7 +1,7 @@
-"""Testumgebung für die Admin-Oberfläche: echte Admin-App (FastAPI) mit simuliertem
-Sonos, SQLite-Store und einer nachgebildeten Integration.
+"""Test environment for the admin UI: the real admin app (FastAPI) with a simulated
+Sonos, the SQLite store and a mocked integration.
 
-Zum Ansehen im Browser:  python -m tests.admin_harness  → http://127.0.0.1:8741/
+To look at it in a browser:  python -m tests.admin_harness  → http://127.0.0.1:8741/
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class AdminHarness:
 
 
 async def _fake_integration(ctx: AppContext) -> None:
-    """Meldet den Gast-Link und führt angeforderte Rotationen aus – wie die Integration."""
+    """Reports the guest link and executes requested rotations – like the integration."""
     generation = 0
     while True:
         ctx.integration_seen()
@@ -95,7 +95,7 @@ def serve(harness: AdminHarness, port: int = 0) -> Iterator[str]:
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
-            raise RuntimeError("Testserver startet nicht")
+            raise RuntimeError("Test server does not start")
         time.sleep(0.02)
     host, actual_port = server.servers[0].sockets[0].getsockname()[:2]
     try:
@@ -108,7 +108,7 @@ def serve(harness: AdminHarness, port: int = 0) -> Iterator[str]:
 if __name__ == "__main__":
     demo = create_admin_harness()
     with serve(demo, port=8741) as url:
-        print(f"Admin-Oberfläche: {url}")
+        print(f"Admin UI: {url}")
         with contextlib.suppress(KeyboardInterrupt):
             while True:
                 time.sleep(1)

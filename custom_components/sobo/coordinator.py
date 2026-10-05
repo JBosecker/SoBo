@@ -1,4 +1,4 @@
-"""Fragt den App-Status ab und reagiert darauf (Rotation, erneutes Melden der URL)."""
+"""Polls the app status and reacts to it (rotation, re-reporting the URL)."""
 
 from __future__ import annotations
 
@@ -30,14 +30,14 @@ class SoboCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = client
         self.guest_access: GuestAccess | None = None
         self._rotating = False
-        # Zuletzt ausgeführte Rotation: dieselbe Anforderung nie zweimal ausführen.
+        # Last executed rotation: never execute the same request twice.
         self._last_rotated: int | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
             data = await self.client.status()
         except SoboApiError as err:
-            raise UpdateFailed(f"SoBo-App nicht erreichbar: {err}") from err
+            raise UpdateFailed(f"SoBo app not reachable: {err}") from err
         if self.guest_access is not None:
             await self._sync_guest_access(data)
         return data
@@ -45,7 +45,7 @@ class SoboCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _sync_guest_access(self, data: dict[str, Any]) -> None:
         guest = self.guest_access
         assert guest is not None
-        # Option: Webhook nur registriert, solange die Jukebox läuft
+        # Option: webhook only registered while the jukebox is on
         if data.get("unregister_when_inactive"):
             guest.set_enabled(bool(data.get("effectively_active")))
         else:
@@ -56,7 +56,7 @@ class SoboCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             if requested > done and not self._rotating:
                 if requested == self._last_rotated:
-                    # Schon rotiert, aber die Bestätigung kam nicht an: nur erneut melden.
+                    # Already rotated, but the confirmation did not arrive: only report again.
                     await guest.async_report_rotated(requested)
                 else:
                     self._rotating = True
@@ -64,12 +64,12 @@ class SoboCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         await guest.async_rotate_only()
                     finally:
                         self._rotating = False
-                    # Als erledigt merken, bevor gemeldet wird: Scheitert die Meldung,
-                    # wird beim nächsten Abruf nur sie wiederholt.
+                    # Remember as done before reporting: if the report fails, only
+                    # the report is repeated on the next poll.
                     self._last_rotated = requested
                     await guest.async_report_rotated(requested)
             elif not data.get("guest_access_reported"):
-                # App wurde neu gestartet und kennt die URL noch nicht.
+                # The app was restarted and does not know the URL yet.
                 await guest.async_report()
         except SoboApiError as err:
-            _LOGGER.warning("Gastzugang konnte nicht an die App gemeldet werden: %s", err)
+            _LOGGER.warning("Could not report the guest access to the app: %s", err)

@@ -1,4 +1,4 @@
-"""SQLite-Repository der Engine (write-through), Migrationen per Alembic."""
+"""SQLite repository of the engine (write-through), migrations via Alembic."""
 
 from __future__ import annotations
 
@@ -20,14 +20,14 @@ _LOG = logging.getLogger(__name__)
 
 MIGRATIONS = Path(__file__).parent / "migrations"
 SETTINGS_KEY = "jukebox"
-# Wie weit zurück beim Start geladen wird (Sperrzeiten, Vote-Budgets).
+# How far back to load on start (cooldowns, vote budgets).
 HISTORY_WINDOW = timedelta(hours=24)
 
 _OPEN_STATES = (ItemState.QUEUED.value, ItemState.NEXT.value, ItemState.PLAYING.value)
 
 
 def _utc(value: datetime) -> datetime:
-    """Beim Lesen immer UTC mit Zeitzone (ältere SQLModel-Versionen liefern naiv)."""
+    """When reading: always UTC with time zone (older SQLModel versions return naive values)."""
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
@@ -36,8 +36,8 @@ def _opt_utc(value: datetime | None) -> datetime | None:
 
 
 def _db_time(value: datetime) -> datetime:
-    """Zum Speichern: UTC mit Zeitzone. Neuere SQLModel-Versionen (UTCDateTime)
-    lehnen naive Werte ab; ältere ignorieren die Zeitzone auf SQLite."""
+    """For storing: UTC with time zone. Newer SQLModel versions (UTCDateTime) reject
+    naive values; older ones ignore the time zone on SQLite."""
     return value.astimezone(UTC)
 
 
@@ -81,7 +81,7 @@ class SqlRepository:
         path.parent.mkdir(parents=True, exist_ok=True)
         return cls(f"sqlite:///{path}", clock)
 
-    # ------------------------------------------------------------------ Laden
+    # ------------------------------------------------------------------ loading
 
     def load(self) -> Snapshot:
         cutoff = _db_time(self._clock.now() - HISTORY_WINDOW)
@@ -92,7 +92,7 @@ class SqlRepository:
                 try:
                     settings = JukeboxSettings.model_validate_json(settings_row.value)
                 except ValueError:
-                    _LOG.exception("Gespeicherte Einstellungen ungültig – Standardwerte")
+                    _LOG.exception("Stored settings are invalid – using defaults")
             guests = [self._guest(r) for r in session.exec(select(GuestRow)).all()]
             item_rows = session.exec(
                 select(QueueItemRow).where(
@@ -153,7 +153,7 @@ class SqlRepository:
             removed_reason=row.removed_reason,
         )
 
-    # ------------------------------------------------------------------ Schreiben
+    # ------------------------------------------------------------------ writing
 
     def save_settings(self, settings: JukeboxSettings) -> None:
         with Session(self._engine) as session:
@@ -248,7 +248,7 @@ class SqlRepository:
             return [AuditEntry(_utc(r.at), r.actor, r.action, r.detail) for r in rows]
 
     def purge_history(self, older_than: timedelta) -> None:
-        """Aufbewahrungsfrist (Plan 6, Datenschutz): alte Einträge löschen."""
+        """Retention period (plan 6, privacy): delete old entries."""
         cutoff = _db_time(self._clock.now() - older_than)
         closed_and_old = (
             col(QueueItemRow.state).not_in(_OPEN_STATES),

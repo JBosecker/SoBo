@@ -1,4 +1,4 @@
-"""button.sobo_skip und button.sobo_rotate_guest_access."""
+"""button.sobo_skip and button.sobo_rotate_guest_access."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class SoboSkipButton(SoboEntity, ButtonEntity):
         try:
             await self.coordinator.client.skip()
         except SoboApiError as err:
-            raise HomeAssistantError(f"SoBo nicht erreichbar: {err}") from err
+            raise HomeAssistantError(f"SoBo not reachable: {err}") from err
         await self.coordinator.async_request_refresh()
 
 
@@ -50,5 +50,5 @@ class SoboRotateButton(SoboEntity, ButtonEntity):
         try:
             await self._guest_access.async_rotate(generation)
         except SoboApiError as err:
-            raise HomeAssistantError(f"SoBo nicht erreichbar: {err}") from err
+            raise HomeAssistantError(f"SoBo not reachable: {err}") from err
         await self.coordinator.async_request_refresh()

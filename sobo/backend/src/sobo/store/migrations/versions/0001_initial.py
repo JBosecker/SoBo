@@ -1,4 +1,4 @@
-"""Initiales Schema (Plan 7)
+"""Initial schema (plan 7)
 
 Revision ID: 0001_initial
 Revises:

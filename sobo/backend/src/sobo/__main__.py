@@ -1,7 +1,7 @@
-"""Startpunkt der App: zwei uvicorn-Server in einer Event-Loop.
+"""App entry point: two uvicorn servers in one event loop.
 
-* Admin/Ingress auf `0.0.0.0:8737` (Zugriff nur von der Ingress-IP)
-* Interne API für die Integration auf `127.0.0.1:8738` (Secret)
+* Admin/ingress on `0.0.0.0:8737` (only reachable from the ingress IP)
+* Internal API for the integration on `127.0.0.1:8738` (shared secret)
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ async def _housekeeping(ctx: AppContext) -> None:
             try:
                 purge(HISTORY_RETENTION)
             except Exception:
-                _LOG.exception("Aufräumen der Historie fehlgeschlagen")
+                _LOG.exception("Purging the history failed")
         await asyncio.sleep(6 * 3600)
 
 
@@ -66,12 +66,12 @@ async def run(options: AppOptions) -> None:
             proxy_headers=False,
             server_header=False,
             access_log=False,
-            # Long-Poll-Anfragen dürfen länger offen bleiben als der Standard.
+            # Long-poll requests may stay open longer than the default.
             timeout_keep_alive=75,
         )
     )
-    # Signale selbst behandeln: uvicorns eigene Behandlung ist pro Server gedacht
-    # und würde sich bei zwei Servern gegenseitig überschreiben.
+    # Handle signals ourselves: uvicorn's handling is per server and two servers
+    # would overwrite each other's handlers.
     admin.capture_signals = contextlib.nullcontext  # type: ignore[method-assign,assignment]
     internal.capture_signals = contextlib.nullcontext  # type: ignore[method-assign,assignment]
 

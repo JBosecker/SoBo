@@ -1,10 +1,401 @@
 "use strict";
 (() => {
-  // Alle Pfade relativ: Die Seite läuft hinter dem Ingress-Präfix von Home Assistant.
+  // All paths are relative: the page runs behind Home Assistant's ingress prefix.
   const POLL_MS = 2000;
   const $ = (id) => document.getElementById(id);
 
-  // ------------------------------------------------------------------ Hilfen
+  // ------------------------------------------------------------------ texts (en is the default, de is a translation)
+
+  const I18N = {
+    en: {
+      locale: "en-GB",
+      power_on: "Jukebox on",
+      power_off: "Jukebox off",
+      power_outside_window: "On, outside the time window",
+      power_hint: "Turns the jukebox on or off for guests.",
+      tabs_label: "Sections",
+      tab_live: "Live",
+      tab_access: "Guest access",
+      tab_settings: "Settings",
+      tab_log: "Log",
+      now_heading: "Now playing",
+      nothing: "Nothing",
+      skip: "Skip",
+      freeze: "Freeze queue",
+      frozen: "Queue frozen",
+      queue_heading: "Queue",
+      queue_empty: "No requests yet. If a base playlist is set, it fills the gaps.",
+      guests_heading: "Guests",
+      guests_empty: "Nobody has joined yet.",
+      history_heading: "Recently played",
+      qr_alt: "QR code for guest access",
+      access_heading: "How guests get in",
+      copy_link: "Copy link",
+      print_qr: "Print QR code",
+      fact_integration: "Integration",
+      rotate: "Renew guest access",
+      rotating: "Renewing …",
+      rotate_warning: "The old QR code stops working and every guest has to join again.",
+      rotate_yes: "Renew",
+      cancel: "Cancel",
+      log_time: "Time",
+      log_who: "Who",
+      log_what: "What",
+      log_details: "Details",
+      print_title: "Request a song!",
+      print_steps: "Scan with your phone camera, enter a name, search for a song and suggest it.",
+      print_code: "Code: {code}",
+      just_now: "just now",
+      minutes_ago: "{n} min ago",
+      hours_ago: "{n} h ago",
+      sonos_unavailable: "Sonos is not responding right now.",
+      failed: "That did not work.",
+      no_connection: "No connection to the SoBo app.",
+      override: "Something else was started in the Sonos app{what}. SoBo is waiting.",
+      take_over: "Take over again",
+      took_over: "SoBo is back in control.",
+      no_speaker_banner: "No speaker selected. Without a speaker SoBo cannot play anything.",
+      choose_speaker: "Choose speaker",
+      sonos_error: "Sonos reports a problem: {error}",
+      fallback_error: "The base playlist cannot be loaded: {error}",
+      from_fallback: "From the base playlist",
+      requested_by: "Requested by {name}",
+      next_line: "Up next: {title} by {artist}{origin}",
+      next_open: "Up next: not decided yet",
+      requests_one: "{n} request",
+      requests_other: "{n} requests",
+      votes_one: "vote",
+      votes_other: "votes",
+      pinned: "Pinned",
+      pin: "Pin",
+      pin_help: "Pinned songs play before all others.",
+      remove: "Remove",
+      remove_label: "Remove {title}",
+      removed: "Removed.",
+      guest_meta: "{requests}, {votes} votes left, active {ago}",
+      block: "Block",
+      unblock: "Unblock",
+      block_label: "Block {name}",
+      unblock_label: "Unblock {name}",
+      no_link: "No guest link yet.",
+      explain_no_integration: "The SoBo integration is not connected. Install it via HACS and set it up in Home Assistant under Devices & services.",
+      explain_cloud: "Guests scan the QR code with their phone camera. The link works everywhere, even without your Wi-Fi, and reveals nothing about your Home Assistant address.",
+      explain_local: "Nabu Casa is not connected. This link only works on your own Wi-Fi.",
+      explain_none: "The integration has not reported a link yet.",
+      connected: "Connected",
+      not_connected: "Not connected",
+      not_set_up: "Not set up",
+      link_copied: "Link copied.",
+      link_selected: "Link selected. Press Ctrl/Cmd+C to copy.",
+      please_choose: "Please choose",
+      searching_speakers: "Looking for speakers …",
+      search_again: "Search again",
+      not_found: "{value} (not found)",
+      no_other_speakers: "No other speakers found.",
+      no_apple_account: "No Apple Music account found in the Sonos household.",
+      favorite: "{name} (favourite)",
+      none: "None",
+      save: "Save",
+      saving: "Saving …",
+      saved: "Saved.",
+      range_error: "Please enter a value from {min} to {max}.",
+      code_error: "Please enter 4 to 8 digits.",
+      value_error: "This value does not fit.",
+      check_fields: "Please check the marked fields.",
+      settings_conflict: "The settings do not fit together.",
+      no_speakers_found: "No Sonos speakers found.",
+      jukebox_turned_on: "Jukebox turned on.",
+      jukebox_turned_off: "Jukebox turned off.",
+      skipped: "Skipped.",
+      rotation_started: "Guest access is being renewed. Please put up the new QR code.",
+      settings_load_failed: "Settings could not be loaded.",
+      errors: {
+        no_speaker: "Choose and save a speaker first.",
+        unknown_item: "This song is no longer in the queue.",
+        unknown_guest: "This guest no longer exists.",
+        integration_not_connected: "The SoBo integration is not connected.",
+        sonos_unavailable: "Sonos is not responding right now.",
+      },
+      states: {
+        inactive: "Off",
+        idle: "Ready, waiting for requests",
+        playing_guest: "Playing guest requests",
+        playing_fallback: "Playing base playlist",
+        paused: "Paused",
+        manual_override: "Sonos app took over",
+        error: "Problem",
+      },
+      sections: {
+        speaker: ["Speaker", "Which Sonos is the party on? Guests cannot choose the room."],
+        music: ["Music"],
+        votes: ["Votes"],
+        limits: ["Rules for requests"],
+        schedule: ["Time window"],
+        guest_access: ["Guest access settings"],
+      },
+      fields: {
+        "speaker.coordinator_uid": ["Speaker"],
+        "speaker.members": ["Grouped speakers"],
+        "speaker.start_volume": ["Start volume", "Applied when turning on. Leave empty to keep the volume."],
+        "speaker.max_volume": ["Maximum volume", "If someone turns it up further, SoBo turns it down again."],
+        account_id: ["Apple Music account"],
+        "fallback.source_id": ["Base playlist", "Plays while there are no requests."],
+        "fallback.shuffle": ["Shuffle the base playlist"],
+        "votes.votes_per_window": ["Votes per guest"],
+        "votes.window_minutes": ["Period in minutes", "A used vote comes back after this time."],
+        "votes.suggestion_costs_vote": ["A suggestion costs a vote"],
+        "limits.suggestions_per_window": ["Suggestions per guest"],
+        "limits.suggestion_window_minutes": ["Suggestion period in minutes"],
+        "limits.max_track_seconds": ["Maximum song length in minutes"],
+        "limits.track_cooldown_minutes": ["Cooldown for the same song in minutes"],
+        "limits.artist_cooldown_minutes": ["Cooldown for the same artist in minutes", "0 turns the cooldown off."],
+        "limits.explicit_filter": ["Exclude songs with explicit content", "Only works if Apple Music provides the information."],
+        "limits.blocklist": ["Blocklist", "One entry per line. Matches title, artist or album."],
+        "schedule.enabled": ["Only open for guests within a time window"],
+        "schedule.start": ["Start"],
+        "schedule.end": ["End", "Crossing midnight works too, e.g. 20:00 to 02:00."],
+        timezone: ["Time zone", "For example Europe/Berlin."],
+        "guest_access.presence_code": ["Presence code", "4 to 8 digits you announce at the party. Leave empty for no code."],
+        "guest_access.max_active_guests": ["Maximum active guests"],
+        "guest_access.session_hours": ["Sign-in valid for hours"],
+        "guest_access.joins_per_minute": ["New guests per minute", "Slows down mass sign-ups if the link gets around."],
+        "guest_access.long_poll_timeout": ["Wait time for live updates in seconds"],
+        "guest_access.max_open_long_polls": ["Simultaneous live connections", "Beyond this, phones ask every few seconds instead."],
+        "guest_access.show_covers": ["Show album covers", "Phones load covers directly from Apple."],
+        "guest_access.unregister_when_inactive": ["Turn the guest link off while the jukebox is off"],
+      },
+      actions: {
+        settings: "Settings changed",
+        jukebox_on: "Jukebox turned on",
+        jukebox_off: "Jukebox turned off",
+        freeze: "Queue frozen",
+        unfreeze: "Queue resumed",
+        remove: "Song removed",
+        pin: "Song pinned",
+        unpin: "Song unpinned",
+        block: "Guest blocked",
+        unblock: "Guest unblocked",
+        skip: "Song skipped",
+        resume_control: "Control taken back",
+        manual_override: "Sonos app took over",
+        rotate_requested: "Guest access renewal requested",
+        rotate_guest_access: "Guest access renewed",
+      },
+    },
+    de: {
+      locale: "de-DE",
+      power_on: "Jukebox an",
+      power_off: "Jukebox aus",
+      power_outside_window: "An, außerhalb des Zeitfensters",
+      power_hint: "Schaltet die Jukebox für Gäste an oder aus.",
+      tabs_label: "Bereiche",
+      tab_live: "Live",
+      tab_access: "Gastzugang",
+      tab_settings: "Einstellungen",
+      tab_log: "Protokoll",
+      now_heading: "Läuft gerade",
+      nothing: "Nichts",
+      skip: "Überspringen",
+      freeze: "Warteschlange anhalten",
+      frozen: "Warteschlange angehalten",
+      queue_heading: "Warteschlange",
+      queue_empty: "Noch keine Wünsche. Läuft die Basis-Playlist, füllt sie die Pausen.",
+      guests_heading: "Gäste",
+      guests_empty: "Noch niemand dabei.",
+      history_heading: "Zuletzt gespielt",
+      qr_alt: "QR-Code für den Gastzugang",
+      access_heading: "So kommen Gäste rein",
+      copy_link: "Link kopieren",
+      print_qr: "QR-Code drucken",
+      fact_integration: "Integration",
+      rotate: "Gastzugang erneuern",
+      rotating: "Wird erneuert …",
+      rotate_warning: "Der alte QR-Code funktioniert danach nicht mehr, und alle Gäste müssen neu beitreten.",
+      rotate_yes: "Erneuern",
+      cancel: "Abbrechen",
+      log_time: "Zeit",
+      log_who: "Wer",
+      log_what: "Was",
+      log_details: "Details",
+      print_title: "Wünsch dir einen Song!",
+      print_steps: "Mit der Handykamera scannen, Namen eingeben, Song suchen und vorschlagen.",
+      print_code: "Code: {code}",
+      just_now: "gerade eben",
+      minutes_ago: "vor {n} Min.",
+      hours_ago: "vor {n} Std.",
+      sonos_unavailable: "Sonos antwortet gerade nicht.",
+      failed: "Das hat nicht geklappt.",
+      no_connection: "Keine Verbindung zur SoBo-App.",
+      override: "In der Sonos-App wurde etwas anderes gestartet{what}. SoBo wartet.",
+      take_over: "Wieder übernehmen",
+      took_over: "SoBo hat wieder übernommen.",
+      no_speaker_banner: "Kein Lautsprecher gewählt. Ohne Lautsprecher kann SoBo nichts abspielen.",
+      choose_speaker: "Lautsprecher wählen",
+      sonos_error: "Sonos meldet eine Störung: {error}",
+      fallback_error: "Die Basis-Playlist lässt sich nicht laden: {error}",
+      from_fallback: "Aus der Basis-Playlist",
+      requested_by: "Wunsch von {name}",
+      next_line: "Als Nächstes: {title} von {artist}{origin}",
+      next_open: "Als Nächstes: noch offen",
+      requests_one: "{n} Wunsch",
+      requests_other: "{n} Wünsche",
+      votes_one: "Stimme",
+      votes_other: "Stimmen",
+      pinned: "Angepinnt",
+      pin: "Anpinnen",
+      pin_help: "Angepinnte Songs kommen vor allen anderen dran.",
+      remove: "Entfernen",
+      remove_label: "{title} entfernen",
+      removed: "Entfernt.",
+      guest_meta: "{requests}, {votes} Stimmen übrig, aktiv {ago}",
+      block: "Sperren",
+      unblock: "Entsperren",
+      block_label: "{name} sperren",
+      unblock_label: "{name} entsperren",
+      no_link: "Noch kein Gast-Link.",
+      explain_no_integration: "Die SoBo-Integration ist nicht verbunden. Installiere sie über HACS und richte sie in Home Assistant unter Geräte & Dienste ein.",
+      explain_cloud: "Gäste scannen den QR-Code mit der Handykamera. Der Link funktioniert überall, auch ohne euer WLAN, und verrät nichts über deine Home-Assistant-Adresse.",
+      explain_local: "Nabu Casa ist nicht verbunden. Dieser Link funktioniert nur im eigenen WLAN.",
+      explain_none: "Die Integration hat noch keinen Link gemeldet.",
+      connected: "Verbunden",
+      not_connected: "Nicht verbunden",
+      not_set_up: "Nicht eingerichtet",
+      link_copied: "Link kopiert.",
+      link_selected: "Link markiert. Mit Strg/Cmd+C kopieren.",
+      please_choose: "Bitte wählen",
+      searching_speakers: "Lautsprecher werden gesucht …",
+      search_again: "Erneut suchen",
+      not_found: "{value} (nicht gefunden)",
+      no_other_speakers: "Keine weiteren Lautsprecher gefunden.",
+      no_apple_account: "Kein Apple-Music-Konto im Sonos-Haushalt gefunden.",
+      favorite: "{name} (Favorit)",
+      none: "Keine",
+      save: "Speichern",
+      saving: "Speichert …",
+      saved: "Gespeichert.",
+      range_error: "Bitte einen Wert von {min} bis {max} eingeben.",
+      code_error: "Bitte 4 bis 8 Ziffern eingeben.",
+      value_error: "Dieser Wert passt nicht.",
+      check_fields: "Bitte die markierten Felder prüfen.",
+      settings_conflict: "Die Einstellungen passen nicht zusammen.",
+      no_speakers_found: "Keine Sonos-Lautsprecher gefunden.",
+      jukebox_turned_on: "Jukebox eingeschaltet.",
+      jukebox_turned_off: "Jukebox ausgeschaltet.",
+      skipped: "Übersprungen.",
+      rotation_started: "Gastzugang wird erneuert. Bitte den neuen QR-Code aushängen.",
+      settings_load_failed: "Einstellungen konnten nicht geladen werden.",
+      errors: {
+        no_speaker: "Erst einen Lautsprecher wählen und speichern.",
+        unknown_item: "Den Song gibt es nicht mehr in der Warteschlange.",
+        unknown_guest: "Diesen Gast gibt es nicht mehr.",
+        integration_not_connected: "Die SoBo-Integration ist nicht verbunden.",
+        sonos_unavailable: "Sonos antwortet gerade nicht.",
+      },
+      states: {
+        inactive: "Aus",
+        idle: "Bereit, wartet auf Wünsche",
+        playing_guest: "Spielt Gastwünsche",
+        playing_fallback: "Spielt Basis-Playlist",
+        paused: "Pausiert",
+        manual_override: "Sonos-App hat übernommen",
+        error: "Störung",
+      },
+      sections: {
+        speaker: ["Lautsprecher", "Auf welchem Sonos läuft die Party? Gäste können den Raum nicht wählen."],
+        music: ["Musik"],
+        votes: ["Stimmen"],
+        limits: ["Regeln für Wünsche"],
+        schedule: ["Zeitfenster"],
+        guest_access: ["Einstellungen zum Gastzugang"],
+      },
+      fields: {
+        "speaker.coordinator_uid": ["Lautsprecher"],
+        "speaker.members": ["Mitspielende Lautsprecher"],
+        "speaker.start_volume": ["Startlautstärke", "Beim Einschalten. Leer lassen, um die Lautstärke nicht zu ändern."],
+        "speaker.max_volume": ["Maximale Lautstärke", "Wird höher gedreht, regelt SoBo wieder herunter."],
+        account_id: ["Apple-Music-Konto"],
+        "fallback.source_id": ["Basis-Playlist", "Läuft, solange keine Wünsche da sind."],
+        "fallback.shuffle": ["Basis-Playlist zufällig abspielen"],
+        "votes.votes_per_window": ["Stimmen pro Gast"],
+        "votes.window_minutes": ["Zeitraum in Minuten", "Eine verbrauchte Stimme kommt nach dieser Zeit zurück."],
+        "votes.suggestion_costs_vote": ["Ein Vorschlag kostet eine Stimme"],
+        "limits.suggestions_per_window": ["Vorschläge pro Gast"],
+        "limits.suggestion_window_minutes": ["Zeitraum für Vorschläge in Minuten"],
+        "limits.max_track_seconds": ["Maximale Songlänge in Minuten"],
+        "limits.track_cooldown_minutes": ["Sperrzeit für denselben Song in Minuten"],
+        "limits.artist_cooldown_minutes": ["Sperrzeit für denselben Interpreten in Minuten", "0 schaltet die Sperre aus."],
+        "limits.explicit_filter": ["Songs mit explizitem Inhalt ausschließen", "Greift nur, wenn Apple Music die Angabe liefert."],
+        "limits.blocklist": ["Sperrliste", "Ein Eintrag pro Zeile. Passt auf Titel, Interpret oder Album."],
+        "schedule.enabled": ["Nur in einem Zeitfenster für Gäste offen"],
+        "schedule.start": ["Beginn"],
+        "schedule.end": ["Ende", "Über Mitternacht geht auch, z. B. 20:00 bis 02:00."],
+        timezone: ["Zeitzone", "Zum Beispiel Europe/Berlin."],
+        "guest_access.presence_code": ["Anwesenheitscode", "4 bis 8 Ziffern, die du auf der Party bekannt gibst. Leer lassen für keinen Code."],
+        "guest_access.max_active_guests": ["Höchstens aktive Gäste"],
+        "guest_access.session_hours": ["Anmeldung gültig für Stunden"],
+        "guest_access.joins_per_minute": ["Neue Gäste pro Minute", "Bremst Massenanmeldungen, falls der Link die Runde macht."],
+        "guest_access.long_poll_timeout": ["Wartezeit für Live-Updates in Sekunden"],
+        "guest_access.max_open_long_polls": ["Gleichzeitige Live-Verbindungen", "Darüber fragen Handys alle paar Sekunden nach."],
+        "guest_access.show_covers": ["Albumcover zeigen", "Die Handys laden Cover direkt von Apple."],
+        "guest_access.unregister_when_inactive": ["Gast-Link abschalten, solange die Jukebox aus ist"],
+      },
+      actions: {
+        settings: "Einstellungen geändert",
+        jukebox_on: "Jukebox eingeschaltet",
+        jukebox_off: "Jukebox ausgeschaltet",
+        freeze: "Warteschlange angehalten",
+        unfreeze: "Warteschlange fortgesetzt",
+        remove: "Song entfernt",
+        pin: "Song angepinnt",
+        unpin: "Song losgelöst",
+        block: "Gast gesperrt",
+        unblock: "Gast entsperrt",
+        skip: "Song übersprungen",
+        resume_control: "Steuerung übernommen",
+        manual_override: "Sonos-App hat übernommen",
+        rotate_requested: "Gastzugang-Erneuerung angefordert",
+        rotate_guest_access: "Gastzugang erneuert",
+      },
+    },
+  };
+
+  /** Pick the first supported language from the browser preferences (fallback: English). */
+  function pickLanguage() {
+    const wanted = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+    for (const tag of wanted) {
+      const base = String(tag).toLowerCase().split("-")[0];
+      if (I18N[base]) return base;
+    }
+    return "en";
+  }
+
+  const LANG = pickLanguage();
+  const TEXT = I18N[LANG];
+
+  /** Translate `key`, filling `{placeholders}` from `vars`. */
+  function t(key, vars) {
+    const template = TEXT[key] !== undefined ? TEXT[key] : I18N.en[key];
+    if (template === undefined) return key;
+    return String(template).replace(/\{(\w+)\}/g, (match, name) => (vars && vars[name] !== undefined ? String(vars[name]) : match));
+  }
+
+  /** Plural helper: uses `<key>_one` / `<key>_other`. */
+  function tn(key, n, vars) {
+    return t(`${key}_${n === 1 ? "one" : "other"}`, Object.assign({ n }, vars));
+  }
+
+  function applyStaticTexts() {
+    document.documentElement.lang = LANG;
+    for (const node of document.querySelectorAll("[data-i18n]")) node.textContent = t(node.dataset.i18n);
+    for (const node of document.querySelectorAll("[data-i18n-attr]")) {
+      for (const pair of node.dataset.i18nAttr.split(";")) {
+        const [attr, key] = pair.split(":");
+        node.setAttribute(attr, t(key));
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ helpers
 
   class ApiError extends Error {
     constructor(status, body) {
@@ -56,45 +447,37 @@
 
   const store = {
     get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
-    set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* egal */ } },
+    set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* ignore */ } },
   };
 
   function ago(iso) {
     const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-    if (seconds < 60) return "gerade eben";
+    if (seconds < 60) return t("just_now");
     const minutes = Math.round(seconds / 60);
-    if (minutes < 60) return `vor ${minutes} Min.`;
-    return `vor ${Math.round(minutes / 60)} Std.`;
+    if (minutes < 60) return t("minutes_ago", { n: minutes });
+    return t("hours_ago", { n: Math.round(minutes / 60) });
   }
 
   function clock(iso) {
-    return new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+    return new Date(iso).toLocaleString(TEXT.locale, { dateStyle: "short", timeStyle: "medium" });
   }
 
   function errorText(err) {
     const code = err.body && err.body.error;
-    return ERRORS[code] || (err.status === 503 ? "Sonos antwortet gerade nicht." : "Das hat nicht geklappt.");
+    return TEXT.errors[code] || (err.status === 503 ? t("sonos_unavailable") : t("failed"));
   }
 
-  const ERRORS = {
-    no_speaker: "Erst einen Lautsprecher wählen und speichern.",
-    unknown_item: "Den Song gibt es nicht mehr in der Warteschlange.",
-    unknown_guest: "Diesen Gast gibt es nicht mehr.",
-    integration_not_connected: "Die SoBo-Integration ist nicht verbunden.",
-    sonos_unavailable: "Sonos antwortet gerade nicht.",
+  const STATE_TONES = {
+    inactive: "",
+    idle: "on",
+    playing_guest: "on",
+    playing_fallback: "on",
+    paused: "",
+    manual_override: "warn",
+    error: "warn",
   };
 
-  const STATES = {
-    inactive: ["Aus", ""],
-    idle: ["Bereit, wartet auf Wünsche", "on"],
-    playing_guest: ["Spielt Gastwünsche", "on"],
-    playing_fallback: ["Spielt Basis-Playlist", "on"],
-    paused: ["Pausiert", ""],
-    manual_override: ["Sonos-App hat übernommen", "warn"],
-    error: ["Störung", "warn"],
-  };
-
-  // ------------------------------------------------------------------ Reiter
+  // ------------------------------------------------------------------ tabs
 
   const TABS = ["live", "access", "settings", "log"];
   let activeTab = "live";
@@ -112,7 +495,7 @@
     if (name === "live") loadGuests();
   }
 
-  // ------------------------------------------------------------------ Status / Live
+  // ------------------------------------------------------------------ status / live
 
   let status = null;
   let lastRendered = {};
@@ -128,7 +511,7 @@
     try {
       status = await api("GET", "api/status");
     } catch (err) {
-      showBanner("Keine Verbindung zur SoBo-App.", null);
+      showBanner(t("no_connection"), null);
       return;
     }
     renderTop();
@@ -138,30 +521,31 @@
   }
 
   function renderTop() {
-    const [label, tone] = STATES[status.state] || [status.state, ""];
+    const label = TEXT.states[status.state] || status.state;
+    const tone = STATE_TONES[status.state] || "";
     const pill = $("state-pill");
     pill.textContent = label;
     pill.className = "pill" + (tone ? " " + tone : "");
     $("power").checked = status.active;
-    let power = status.active ? "Jukebox an" : "Jukebox aus";
-    if (status.active && !status.effectively_active) power = "An, außerhalb des Zeitfensters";
+    let power = status.active ? t("power_on") : t("power_off");
+    if (status.active && !status.effectively_active) power = t("power_outside_window");
     $("power-label").textContent = power;
 
     if (status.state === "manual_override") {
       const what = status.override_info ? ` (${status.override_info})` : "";
-      showBanner(`In der Sonos-App wurde etwas anderes gestartet${what}. SoBo wartet.`, {
-        label: "Wieder übernehmen",
-        run: () => act("POST", "api/control/resume", undefined, "SoBo hat wieder übernommen."),
+      showBanner(t("override", { what }), {
+        label: t("take_over"),
+        run: () => act("POST", "api/control/resume", undefined, t("took_over")),
       });
     } else if (status.last_error === "no_speaker" && status.active) {
-      showBanner("Kein Lautsprecher gewählt. Ohne Lautsprecher kann SoBo nichts abspielen.", {
-        label: "Lautsprecher wählen",
+      showBanner(t("no_speaker_banner"), {
+        label: t("choose_speaker"),
         run: () => selectTab("settings"),
       });
     } else if (status.last_error && status.active) {
-      showBanner(`Sonos meldet eine Störung: ${status.last_error}`, null);
+      showBanner(t("sonos_error", { error: status.last_error }), null);
     } else if (status.fallback_error && status.active) {
-      showBanner(`Die Basis-Playlist lässt sich nicht laden: ${status.fallback_error}`, null);
+      showBanner(t("fallback_error", { error: status.fallback_error }), null);
     } else {
       $("banner").hidden = true;
     }
@@ -177,14 +561,14 @@
   }
 
   function origin(item) {
-    if (item.origin === "fallback") return "Aus der Basis-Playlist";
-    if (item.submitted_by) return `Wunsch von ${item.submitted_by}`;
+    if (item.origin === "fallback") return t("from_fallback");
+    if (item.submitted_by) return t("requested_by", { name: item.submitted_by });
     return "";
   }
 
   function renderLive() {
     const now = status.now_playing;
-    $("now-title").textContent = now ? now.title : "Nichts";
+    $("now-title").textContent = now ? now.title : t("nothing");
     $("now-meta").textContent = now ? [now.artist, origin(now)].filter(Boolean).join(", ") : "";
     const art = $("now-art");
     if (now && now.art && now.art.startsWith("https://")) {
@@ -198,12 +582,12 @@
     $("now-bar").style.width = `${Math.round(fraction * 100)}%`;
     const next = status.next;
     $("next-line").textContent = next
-      ? `Als Nächstes: ${next.title} von ${next.artist}${origin(next) ? ` (${origin(next)})` : ""}`
-      : "Als Nächstes: noch offen";
+      ? t("next_line", { title: next.title, artist: next.artist, origin: origin(next) ? ` (${origin(next)})` : "" })
+      : t("next_open");
 
     const freeze = $("freeze");
     freeze.setAttribute("aria-pressed", String(status.frozen));
-    freeze.textContent = status.frozen ? "Warteschlange angehalten" : "Warteschlange anhalten";
+    freeze.textContent = status.frozen ? t("frozen") : t("freeze");
 
     if (changed("queue", status.queue)) renderQueue(status.queue);
     if (changed("history", status.history)) {
@@ -216,13 +600,13 @@
 
   function renderQueue(queue) {
     $("queue-empty").hidden = queue.length > 0;
-    $("queue-count").textContent = queue.length ? `${queue.length} ${queue.length === 1 ? "Wunsch" : "Wünsche"}` : "";
+    $("queue-count").textContent = queue.length ? tn("requests", queue.length) : "";
     $("queue").replaceChildren(
       ...queue.map((item) =>
         el(
           "li",
           { class: "strip" + (item.pinned ? " pinned" : "") },
-          el("div", { class: "strip-votes" }, el("b", { text: item.votes }), el("span", { text: item.votes === 1 ? "Stimme" : "Stimmen" })),
+          el("div", { class: "strip-votes" }, el("b", { text: item.votes }), el("span", { text: t(item.votes === 1 ? "votes_one" : "votes_other") })),
           el(
             "div",
             { class: "strip-text" },
@@ -237,16 +621,16 @@
               type: "button",
               class: "button",
               "aria-pressed": String(item.pinned),
-              text: item.pinned ? "Angepinnt" : "Anpinnen",
-              title: "Angepinnte Songs kommen vor allen anderen dran.",
+              text: item.pinned ? t("pinned") : t("pin"),
+              title: t("pin_help"),
               onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/pin`, { pinned: !item.pinned }),
             }),
             el("button", {
               type: "button",
               class: "button danger",
-              text: "Entfernen",
-              "aria-label": `${item.title} entfernen`,
-              onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/remove`, undefined, "Entfernt."),
+              text: t("remove"),
+              "aria-label": t("remove_label", { title: item.title }),
+              onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/remove`, undefined, t("removed")),
             })
           )
         )
@@ -274,21 +658,25 @@
               el("div", { class: "guest-name" + (guest.blocked ? " blocked" : ""), text: guest.nickname }),
               el("div", {
                 class: "guest-meta",
-                text: `${guest.suggestions} ${guest.suggestions === 1 ? "Wunsch" : "Wünsche"}, ${guest.votes_left} Stimmen übrig, aktiv ${ago(guest.last_seen)}`,
+                text: t("guest_meta", {
+                  requests: tn("requests", guest.suggestions),
+                  votes: guest.votes_left,
+                  ago: ago(guest.last_seen),
+                }),
               })
             ),
             el("button", {
               type: "button",
               class: "button" + (guest.blocked ? "" : " danger"),
-              text: guest.blocked ? "Entsperren" : "Sperren",
-              "aria-label": `${guest.nickname} ${guest.blocked ? "entsperren" : "sperren"}`,
+              text: guest.blocked ? t("unblock") : t("block"),
+              "aria-label": t(guest.blocked ? "unblock_label" : "block_label", { name: guest.nickname }),
               onclick: () => act("POST", `api/guests/${encodeURIComponent(guest.id)}/block`, { blocked: !guest.blocked }),
             })
           )
         )
       );
     } catch (err) {
-      /* nächster Versuch beim nächsten Abruf */
+      /* try again on the next poll */
     } finally {
       guestsLoading = false;
     }
@@ -305,7 +693,7 @@
     await refreshStatus();
   }
 
-  // ------------------------------------------------------------------ Gastzugang
+  // ------------------------------------------------------------------ guest access
 
   function renderAccess() {
     const access = status.guest_access;
@@ -323,120 +711,102 @@
     } else {
       qr.hidden = true;
       $("qr-missing").hidden = false;
-      $("qr-missing").textContent = "Noch kein Gast-Link.";
+      $("qr-missing").textContent = t("no_link");
     }
     $("guest-url").textContent = url || "–";
     $("copy-url").disabled = !url;
     $("print").disabled = !url;
 
     let explain;
-    if (!access.integration_connected) {
-      explain = "Die SoBo-Integration ist nicht verbunden. Installiere sie über HACS und richte sie in Home Assistant unter Geräte & Dienste ein.";
-    } else if (access.url) {
-      explain = "Gäste scannen den QR-Code mit der Handykamera. Der Link funktioniert überall, auch ohne euer WLAN, und verrät nichts über deine Home-Assistant-Adresse.";
-    } else if (access.local_url) {
-      explain = "Nabu Casa ist nicht verbunden. Dieser Link funktioniert nur im eigenen WLAN.";
-    } else {
-      explain = "Die Integration hat noch keinen Link gemeldet.";
-    }
+    if (!access.integration_connected) explain = t("explain_no_integration");
+    else if (access.url) explain = t("explain_cloud");
+    else if (access.local_url) explain = t("explain_local");
+    else explain = t("explain_none");
     $("access-explain").textContent = explain;
-    $("fact-integration").textContent = access.integration_connected ? "Verbunden" : "Nicht verbunden";
+    $("fact-integration").textContent = access.integration_connected ? t("connected") : t("not_connected");
     $("fact-cloud").textContent =
-      access.cloud_connected === true ? "Verbunden" : access.cloud_connected === false ? "Nicht verbunden" : "Nicht eingerichtet";
+      access.cloud_connected === true ? t("connected") : access.cloud_connected === false ? t("not_connected") : t("not_set_up");
     const rotate = $("rotate");
     rotate.disabled = !access.integration_connected || access.rotation_pending;
-    rotate.textContent = access.rotation_pending ? "Wird erneuert …" : "Gastzugang erneuern";
+    rotate.textContent = access.rotation_pending ? t("rotating") : t("rotate");
   }
 
   async function copyUrl() {
     const text = $("guest-url").textContent;
     try {
       await navigator.clipboard.writeText(text);
-      toast("Link kopiert.");
+      toast(t("link_copied"));
     } catch (err) {
       const range = document.createRange();
       range.selectNodeContents($("guest-url"));
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
-      toast("Link markiert. Mit Strg/Cmd+C kopieren.");
+      toast(t("link_selected"));
     }
   }
 
   function printSheet() {
     const code = settings && settings.guest_access.presence_code;
     $("print-code").hidden = !code;
-    $("print-code").textContent = code ? `Code: ${code}` : "";
+    $("print-code").textContent = code ? t("print_code", { code }) : "";
     window.print();
   }
 
-  // ------------------------------------------------------------------ Einstellungen
+  // ------------------------------------------------------------------ settings
 
   let settings = null;
   const lists = { speakers: null, accounts: null, sources: null, accountsError: null, sourcesError: null };
 
+  // Labels and help texts come from I18N[...].fields / .sections.
   const SECTIONS = {
-    speaker: {
-      title: "Lautsprecher",
-      intro: "Auf welchem Sonos läuft die Party? Gäste können den Raum nicht wählen.",
-      fields: [
-        { path: "speaker.coordinator_uid", label: "Lautsprecher", type: "speaker" },
-        { path: "speaker.members", label: "Mitspielende Lautsprecher", type: "members", wide: true },
-        { path: "speaker.start_volume", label: "Startlautstärke", type: "number", min: 0, max: 100, nullable: true, help: "Beim Einschalten. Leer lassen, um die Lautstärke nicht zu ändern." },
-        { path: "speaker.max_volume", label: "Maximale Lautstärke", type: "number", min: 0, max: 100, help: "Wird höher gedreht, regelt SoBo wieder herunter." },
-      ],
-    },
-    music: {
-      title: "Musik",
-      fields: [
-        { path: "account_id", label: "Apple-Music-Konto", type: "account" },
-        { path: "fallback.source_id", label: "Basis-Playlist", type: "source", help: "Läuft, solange keine Wünsche da sind." },
-        { path: "fallback.shuffle", label: "Basis-Playlist zufällig abspielen", type: "checkbox" },
-      ],
-    },
-    votes: {
-      title: "Stimmen",
-      fields: [
-        { path: "votes.votes_per_window", label: "Stimmen pro Gast", type: "number", min: 1, max: 100 },
-        { path: "votes.window_minutes", label: "Zeitraum in Minuten", type: "number", min: 1, max: 1440, help: "Eine verbrauchte Stimme kommt nach dieser Zeit zurück." },
-        { path: "votes.suggestion_costs_vote", label: "Ein Vorschlag kostet eine Stimme", type: "checkbox" },
-      ],
-    },
-    limits: {
-      title: "Regeln für Wünsche",
-      fields: [
-        { path: "limits.suggestions_per_window", label: "Vorschläge pro Gast", type: "number", min: 0, max: 100 },
-        { path: "limits.suggestion_window_minutes", label: "Zeitraum für Vorschläge in Minuten", type: "number", min: 1, max: 1440 },
-        { path: "limits.max_track_seconds", label: "Maximale Songlänge in Minuten", type: "number", min: 0.5, max: 180, step: 0.5, scale: 60 },
-        { path: "limits.track_cooldown_minutes", label: "Sperrzeit für denselben Song in Minuten", type: "number", min: 0, max: 1440 },
-        { path: "limits.artist_cooldown_minutes", label: "Sperrzeit für denselben Interpreten in Minuten", type: "number", min: 0, max: 1440, help: "0 schaltet die Sperre aus." },
-        { path: "limits.explicit_filter", label: "Songs mit explizitem Inhalt ausschließen", type: "checkbox", help: "Greift nur, wenn Apple Music die Angabe liefert." },
-        { path: "limits.blocklist", label: "Sperrliste", type: "lines", wide: true, help: "Ein Eintrag pro Zeile. Passt auf Titel, Interpret oder Album." },
-      ],
-    },
-    schedule: {
-      title: "Zeitfenster",
-      fields: [
-        { path: "schedule.enabled", label: "Nur in einem Zeitfenster für Gäste offen", type: "checkbox" },
-        { path: "schedule.start", label: "Beginn", type: "time" },
-        { path: "schedule.end", label: "Ende", type: "time", help: "Über Mitternacht geht auch, z. B. 20:00 bis 02:00." },
-        { path: "timezone", label: "Zeitzone", type: "text", help: "Zum Beispiel Europe/Berlin." },
-      ],
-    },
-    guest_access: {
-      title: "Einstellungen zum Gastzugang",
-      fields: [
-        { path: "guest_access.presence_code", label: "Anwesenheitscode", type: "text", nullable: true, inputmode: "numeric", help: "4 bis 8 Ziffern, die du auf der Party bekannt gibst. Leer lassen für keinen Code." },
-        { path: "guest_access.max_active_guests", label: "Höchstens aktive Gäste", type: "number", min: 1, max: 1000 },
-        { path: "guest_access.session_hours", label: "Anmeldung gültig für Stunden", type: "number", min: 1, max: 72 },
-        { path: "guest_access.joins_per_minute", label: "Neue Gäste pro Minute", type: "number", min: 1, max: 600, help: "Bremst Massenanmeldungen, falls der Link die Runde macht." },
-        { path: "guest_access.long_poll_timeout", label: "Wartezeit für Live-Updates in Sekunden", type: "number", min: 5, max: 60 },
-        { path: "guest_access.max_open_long_polls", label: "Gleichzeitige Live-Verbindungen", type: "number", min: 1, max: 2000, help: "Darüber fragen Handys alle paar Sekunden nach." },
-        { path: "guest_access.show_covers", label: "Albumcover zeigen", type: "checkbox", help: "Die Handys laden Cover direkt von Apple." },
-        { path: "guest_access.unregister_when_inactive", label: "Gast-Link abschalten, solange die Jukebox aus ist", type: "checkbox" },
-      ],
-    },
+    speaker: [
+      { path: "speaker.coordinator_uid", type: "speaker" },
+      { path: "speaker.members", type: "members", wide: true },
+      { path: "speaker.start_volume", type: "number", min: 0, max: 100, nullable: true },
+      { path: "speaker.max_volume", type: "number", min: 0, max: 100 },
+    ],
+    music: [
+      { path: "account_id", type: "account" },
+      { path: "fallback.source_id", type: "source" },
+      { path: "fallback.shuffle", type: "checkbox" },
+    ],
+    votes: [
+      { path: "votes.votes_per_window", type: "number", min: 1, max: 100 },
+      { path: "votes.window_minutes", type: "number", min: 1, max: 1440 },
+      { path: "votes.suggestion_costs_vote", type: "checkbox" },
+    ],
+    limits: [
+      { path: "limits.suggestions_per_window", type: "number", min: 0, max: 100 },
+      { path: "limits.suggestion_window_minutes", type: "number", min: 1, max: 1440 },
+      { path: "limits.max_track_seconds", type: "number", min: 0.5, max: 180, step: 0.5, scale: 60 },
+      { path: "limits.track_cooldown_minutes", type: "number", min: 0, max: 1440 },
+      { path: "limits.artist_cooldown_minutes", type: "number", min: 0, max: 1440 },
+      { path: "limits.explicit_filter", type: "checkbox" },
+      { path: "limits.blocklist", type: "lines", wide: true },
+    ],
+    schedule: [
+      { path: "schedule.enabled", type: "checkbox" },
+      { path: "schedule.start", type: "time" },
+      { path: "schedule.end", type: "time" },
+      { path: "timezone", type: "text" },
+    ],
+    guest_access: [
+      { path: "guest_access.presence_code", type: "text", nullable: true, inputmode: "numeric" },
+      { path: "guest_access.max_active_guests", type: "number", min: 1, max: 1000 },
+      { path: "guest_access.session_hours", type: "number", min: 1, max: 72 },
+      { path: "guest_access.joins_per_minute", type: "number", min: 1, max: 600 },
+      { path: "guest_access.long_poll_timeout", type: "number", min: 5, max: 60 },
+      { path: "guest_access.max_open_long_polls", type: "number", min: 1, max: 2000 },
+      { path: "guest_access.show_covers", type: "checkbox" },
+      { path: "guest_access.unregister_when_inactive", type: "checkbox" },
+    ],
   };
+
+  function fieldText(field) {
+    const [label, help] = TEXT.fields[field.path] || I18N.en.fields[field.path] || [field.path];
+    return { label, help };
+  }
 
   function getPath(obj, path) {
     return path.split(".").reduce((o, key) => (o == null ? undefined : o[key]), obj);
@@ -461,36 +831,37 @@
       if (item.value === current) found = true;
       nodes.push(el("option", { value: item.value, text: item.label, selected: item.value === current }));
     }
-    if (!found) nodes.push(el("option", { value: current, text: `${current} (nicht gefunden)`, selected: true }));
+    if (!found) nodes.push(el("option", { value: current, text: t("not_found", { value: current }), selected: true }));
     return nodes;
   }
 
   function renderField(field) {
     const id = fieldId(field.path);
     const value = getPath(settings, field.path);
-    const help = field.help ? el("p", { class: "help", id: id + "-help", text: field.help }) : null;
+    const { label, help: helpText } = fieldText(field);
+    const help = helpText ? el("p", { class: "help", id: id + "-help", text: helpText }) : null;
     const error = el("p", { class: "error", id: id + "-error", hidden: true });
     const describedBy = [help && id + "-help", id + "-error"].filter(Boolean).join(" ");
     const wrap = (cls, ...children) => el("div", { class: "field " + cls + (field.wide ? " wide" : ""), "data-path": field.path }, ...children);
 
     switch (field.type) {
       case "checkbox":
-        return wrap("check", el("input", { type: "checkbox", id, checked: Boolean(value), "aria-describedby": describedBy }), el("label", { for: id, text: field.label }), help, error);
+        return wrap("check", el("input", { type: "checkbox", id, checked: Boolean(value), "aria-describedby": describedBy }), el("label", { for: id, text: label }), help, error);
       case "number": {
         const shown = value === null || value === undefined ? "" : field.scale ? value / field.scale : value;
-        return wrap("", el("label", { for: id, text: field.label }), el("input", { type: "number", id, value: shown, min: field.min, max: field.max, step: field.step || 1, inputmode: "numeric", "aria-describedby": describedBy }), help, error);
+        return wrap("", el("label", { for: id, text: label }), el("input", { type: "number", id, value: shown, min: field.min, max: field.max, step: field.step || 1, inputmode: "numeric", "aria-describedby": describedBy }), help, error);
       }
       case "time":
-        return wrap("", el("label", { for: id, text: field.label }), el("input", { type: "time", id, value: String(value || "").slice(0, 5), "aria-describedby": describedBy }), help, error);
+        return wrap("", el("label", { for: id, text: label }), el("input", { type: "time", id, value: String(value || "").slice(0, 5), "aria-describedby": describedBy }), help, error);
       case "text":
-        return wrap("", el("label", { for: id, text: field.label }), el("input", { type: "text", id, value: value || "", inputmode: field.inputmode, autocomplete: "off", "aria-describedby": describedBy }), help, error);
+        return wrap("", el("label", { for: id, text: label }), el("input", { type: "text", id, value: value || "", inputmode: field.inputmode, autocomplete: "off", "aria-describedby": describedBy }), help, error);
       case "lines":
-        return wrap("", el("label", { for: id, text: field.label }), el("textarea", { id, "aria-describedby": describedBy, text: (value || []).join("\n") }), help, error);
+        return wrap("", el("label", { for: id, text: label }), el("textarea", { id, "aria-describedby": describedBy, text: (value || []).join("\n") }), help, error);
       case "speaker": {
         const speakers = lists.speakers;
-        const select = el("select", { id, "aria-describedby": describedBy }, options((speakers || []).map((s) => ({ value: s.uid, label: `${s.name} (${s.ip})` })), value, speakers ? "Bitte wählen" : "Lautsprecher werden gesucht …"));
-        const rescan = el("button", { type: "button", class: "button", text: "Erneut suchen", onclick: () => loadSonosLists(true) });
-        return wrap("", el("label", { for: id, text: field.label }), el("div", { class: "row" }, select, rescan), help, error);
+        const select = el("select", { id, "aria-describedby": describedBy }, options((speakers || []).map((s) => ({ value: s.uid, label: `${s.name} (${s.ip})` })), value, speakers ? t("please_choose") : t("searching_speakers")));
+        const rescan = el("button", { type: "button", class: "button", text: t("search_again"), onclick: () => loadSonosLists(true) });
+        return wrap("", el("label", { for: id, text: label }), el("div", { class: "row" }, select, rescan), help, error);
       }
       case "members": {
         const coordinator = getPath(settings, "speaker.coordinator_uid");
@@ -498,19 +869,19 @@
         const boxes = others.map((s) =>
           el("label", { class: "row" }, el("input", { type: "checkbox", value: s.uid, checked: (value || []).includes(s.uid) }), s.name)
         );
-        return wrap("", el("fieldset", { id }, el("legend", { text: field.label }), boxes.length ? boxes : el("p", { class: "help", text: "Keine weiteren Lautsprecher gefunden." })), help, error);
+        return wrap("", el("fieldset", { id }, el("legend", { text: label }), boxes.length ? boxes : el("p", { class: "help", text: t("no_other_speakers") })), help, error);
       }
       case "account": {
         const accounts = lists.accounts || [];
-        const hint = lists.accountsError || (lists.accounts && !accounts.length ? "Kein Apple-Music-Konto im Sonos-Haushalt gefunden." : null);
-        return wrap("", el("label", { for: id, text: field.label }), el("select", { id, "aria-describedby": describedBy }, options(accounts.map((a) => ({ value: a.account_id, label: a.nickname || `${a.service} ${a.account_id}` })), value, "Bitte wählen")), hint ? el("p", { class: "help", text: hint }) : help, error);
+        const hint = lists.accountsError || (lists.accounts && !accounts.length ? t("no_apple_account") : null);
+        return wrap("", el("label", { for: id, text: label }), el("select", { id, "aria-describedby": describedBy }, options(accounts.map((a) => ({ value: a.account_id, label: a.nickname || `${a.service} ${a.account_id}` })), value, t("please_choose"))), hint ? el("p", { class: "help", text: hint }) : help, error);
       }
       case "source": {
         const sources = lists.sources || [];
-        return wrap("", el("label", { for: id, text: field.label }), el("select", { id, "aria-describedby": describedBy }, options(sources.map((s) => ({ value: s.source_id, label: s.kind === "favorite" ? `${s.name} (Favorit)` : s.name })), value, "Keine")), lists.sourcesError ? el("p", { class: "help", text: lists.sourcesError }) : help, error);
+        return wrap("", el("label", { for: id, text: label }), el("select", { id, "aria-describedby": describedBy }, options(sources.map((s) => ({ value: s.source_id, label: s.kind === "favorite" ? t("favorite", { name: s.name }) : s.name })), value, t("none"))), lists.sourcesError ? el("p", { class: "help", text: lists.sourcesError }) : help, error);
       }
       default:
-        throw new Error("Unbekannter Feldtyp " + field.type);
+        throw new Error("Unknown field type " + field.type);
     }
   }
 
@@ -537,15 +908,15 @@
   }
 
   function renderSection(name) {
-    const section = SECTIONS[name];
+    const [title, intro] = TEXT.sections[name];
     const form = document.querySelector(`.settings-form[data-section="${name}"]`);
     const status = el("span", { class: "status", role: "status" });
     form.replaceChildren(
       ...[
-        el("h2", { text: section.title }),
-        section.intro ? el("p", { class: "intro", text: section.intro }) : null,
-        el("div", { class: "fields" }, section.fields.map(renderField)),
-        el("div", { class: "form-actions" }, el("button", { type: "submit", class: "button primary", text: "Speichern" }), status),
+        el("h2", { text: title }),
+        intro ? el("p", { class: "intro", text: intro }) : null,
+        el("div", { class: "fields" }, SECTIONS[name].map(renderField)),
+        el("div", { class: "form-actions" }, el("button", { type: "submit", class: "button primary", text: t("save") }), status),
       ].filter(Boolean)
     );
     form.onsubmit = (event) => {
@@ -555,10 +926,10 @@
     if (name === "speaker") bindCoordinatorChange(form);
   }
 
-  /** Nur einzelne Felder neu aufbauen (z. B. wenn Listen eintreffen) – andere Eingaben bleiben. */
+  /** Rebuild individual fields only (e.g. when lists arrive) – other inputs stay as they are. */
   function refreshFields(name, paths) {
     const form = document.querySelector(`.settings-form[data-section="${name}"]`);
-    for (const field of SECTIONS[name].fields) {
+    for (const field of SECTIONS[name]) {
       if (!paths.includes(field.path)) continue;
       const current = form.querySelector(`[data-path="${CSS.escape(field.path)}"]`);
       if (current) current.replaceWith(renderField(field));
@@ -567,12 +938,12 @@
   }
 
   function bindCoordinatorChange(form) {
-    // Mitspieler-Liste hängt vom gewählten Lautsprecher ab.
+    // The list of grouped speakers depends on the chosen speaker.
     $(fieldId("speaker.coordinator_uid")).addEventListener("change", (event) => {
       const previous = settings;
       settings = structuredClone(settings);
       setPath(settings, "speaker.coordinator_uid", event.target.value || null);
-      const fresh = renderField(SECTIONS.speaker.fields[1]);
+      const fresh = renderField(SECTIONS.speaker[1]);
       settings = previous;
       form.querySelector(`[data-path="speaker.members"]`).replaceWith(fresh);
     });
@@ -600,24 +971,24 @@
     return true;
   }
 
-  function messageFor(field, detail) {
+  function messageFor(field) {
     if (field && field.min !== undefined && field.max !== undefined) {
-      return `Bitte einen Wert von ${field.min} bis ${field.max} eingeben.`;
+      return t("range_error", { min: field.min, max: field.max });
     }
-    if (field && field.path === "guest_access.presence_code") return "Bitte 4 bis 8 Ziffern eingeben.";
-    return "Dieser Wert passt nicht.";
+    if (field && field.path === "guest_access.presence_code") return t("code_error");
+    return t("value_error");
   }
 
   async function saveSection(name, form, statusNode) {
     clearErrors(form);
     const draft = structuredClone(settings);
-    for (const field of SECTIONS[name].fields) setPath(draft, field.path, readField(field));
-    statusNode.textContent = "Speichert …";
+    for (const field of SECTIONS[name]) setPath(draft, field.path, readField(field));
+    statusNode.textContent = t("saving");
     try {
       settings = await api("PUT", "api/settings", draft);
-      statusNode.textContent = "Gespeichert.";
+      statusNode.textContent = t("saved");
       renderSection(name);
-      form.querySelector(".status").textContent = "Gespeichert.";
+      form.querySelector(".status").textContent = t("saved");
       if (name === "speaker") loadSonosLists(false, true);
       lastRendered = {};
       refreshStatus();
@@ -627,10 +998,10 @@
         let shown = false;
         for (const issue of err.body.detail) {
           const path = (issue.loc || []).filter((part) => part !== "body").join(".");
-          const field = SECTIONS[name].fields.find((f) => f.path === path);
-          shown = showFieldError(form, path, messageFor(field, issue)) || shown;
+          const field = SECTIONS[name].find((f) => f.path === path);
+          shown = showFieldError(form, path, messageFor(field)) || shown;
         }
-        statusNode.textContent = shown ? "Bitte die markierten Felder prüfen." : "Die Einstellungen passen nicht zusammen.";
+        statusNode.textContent = shown ? t("check_fields") : t("settings_conflict");
       } else {
         statusNode.textContent = errorText(err);
       }
@@ -650,7 +1021,7 @@
       jobs.push(
         api("GET", "api/sonos/speakers")
           .then((speakers) => { lists.speakers = speakers; })
-          .catch(() => { lists.speakers = []; toast("Keine Sonos-Lautsprecher gefunden."); })
+          .catch(() => { lists.speakers = []; toast(t("no_speakers_found")); })
           .then(() => refreshFields("speaker", speakerPaths))
       );
     }
@@ -666,25 +1037,8 @@
     refreshFields("music", ["account_id", "fallback.source_id"]);
   }
 
-  // ------------------------------------------------------------------ Protokoll
+  // ------------------------------------------------------------------ log
 
-  const ACTIONS = {
-    settings: "Einstellungen geändert",
-    jukebox_on: "Jukebox eingeschaltet",
-    jukebox_off: "Jukebox ausgeschaltet",
-    freeze: "Warteschlange angehalten",
-    unfreeze: "Warteschlange fortgesetzt",
-    remove: "Song entfernt",
-    pin: "Song angepinnt",
-    unpin: "Song losgelöst",
-    block: "Gast gesperrt",
-    unblock: "Gast entsperrt",
-    skip: "Song übersprungen",
-    resume_control: "Steuerung übernommen",
-    manual_override: "Sonos-App hat übernommen",
-    rotate_requested: "Gastzugang-Erneuerung angefordert",
-    rotate_guest_access: "Gastzugang erneuert",
-  };
   const ACTORS = { integration: "Home Assistant", sonos: "Sonos" };
 
   async function loadLog() {
@@ -697,7 +1051,7 @@
             {},
             el("td", { text: clock(entry.at) }),
             el("td", { text: ACTORS[entry.actor] || entry.actor }),
-            el("td", { text: ACTIONS[entry.action] || entry.action }),
+            el("td", { text: TEXT.actions[entry.action] || entry.action }),
             el("td", { text: entry.detail })
           )
         )
@@ -707,9 +1061,10 @@
     }
   }
 
-  // ------------------------------------------------------------------ Start
+  // ------------------------------------------------------------------ start
 
   async function boot() {
+    applyStaticTexts();
     for (const tab of TABS) $("tab-" + tab).addEventListener("click", () => selectTab(tab));
     document.querySelector(".tabs").addEventListener("keydown", (event) => {
       const index = TABS.indexOf(activeTab);
@@ -720,12 +1075,12 @@
       }
     });
     $("banner-action").addEventListener("click", () => bannerAction && bannerAction.run());
-    // Cover nicht ladbar: lieber ohne Bild als mit kaputtem Symbol.
+    // Cover cannot be loaded: better no image than a broken icon.
     $("now-art").addEventListener("error", () => { $("now-art").hidden = true; });
     $("power").addEventListener("change", (event) =>
-      act("POST", "api/jukebox", { active: event.target.checked }, event.target.checked ? "Jukebox eingeschaltet." : "Jukebox ausgeschaltet.")
+      act("POST", "api/jukebox", { active: event.target.checked }, event.target.checked ? t("jukebox_turned_on") : t("jukebox_turned_off"))
     );
-    $("skip").addEventListener("click", () => act("POST", "api/skip", undefined, "Übersprungen."));
+    $("skip").addEventListener("click", () => act("POST", "api/skip", undefined, t("skipped")));
     $("freeze").addEventListener("click", () => act("POST", "api/freeze", { frozen: !status.frozen }));
     $("copy-url").addEventListener("click", copyUrl);
     $("print").addEventListener("click", printSheet);
@@ -734,14 +1089,14 @@
     $("rotate-yes").addEventListener("click", async () => {
       $("rotate-confirm").hidden = true;
       $("rotate").hidden = false;
-      await act("POST", "api/guest-access/rotate", undefined, "Gastzugang wird erneuert. Bitte den neuen QR-Code aushängen.");
+      await act("POST", "api/guest-access/rotate", undefined, t("rotation_started"));
     });
 
     try {
       settings = await api("GET", "api/settings");
       renderSettings();
     } catch (err) {
-      toast("Einstellungen konnten nicht geladen werden.");
+      toast(t("settings_load_failed"));
     }
     await refreshStatus();
     const saved = store.get("sobo.tab");

@@ -1,4 +1,4 @@
-"""Domänenmodell der Jukebox (Plan 5, 7)."""
+"""Domain model of the jukebox (plan 5, 7)."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ class Vote:
     guest_id: str
     item_id: str
     created_at: datetime
-    # Zählt gegen das Vote-Budget? (Vorschlag ohne Kosten → False)
+    # Counts against the vote budget? (free suggestion → False)
     counts: bool = True
 
 
@@ -67,7 +67,7 @@ class QueueItem:
 
     @property
     def is_open(self) -> bool:
-        """Noch nicht gespielt/entfernt."""
+        """Not yet played/removed."""
         return self.state in (ItemState.QUEUED, ItemState.NEXT, ItemState.PLAYING)
 
 

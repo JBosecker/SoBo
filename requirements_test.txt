@@ -1,2 +1,2 @@
-# Tests der HA-Integration (custom_components/sobo)
+# Tests of the HA integration (custom_components/sobo)
 pytest-homeassistant-custom-component

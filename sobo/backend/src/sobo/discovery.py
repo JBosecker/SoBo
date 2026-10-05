@@ -1,5 +1,5 @@
-"""Supervisor-Discovery: meldet Host, Port und Secret an HA, damit die
-Integration sich per `async_step_hassio` koppeln kann (Plan 3.3)."""
+"""Supervisor discovery: announces host, port and secret to HA so the integration
+can pair via `async_step_hassio` (plan 3.3)."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ async def announce(
 ) -> bool:
     token = os.environ.get("SUPERVISOR_TOKEN")
     if not token:
-        _LOG.info("Kein SUPERVISOR_TOKEN – Discovery übersprungen (Entwicklung?)")
+        _LOG.info("No SUPERVISOR_TOKEN – skipping discovery (development?)")
         return False
     own_client = client is None
     client = client or httpx.AsyncClient(timeout=10)
@@ -36,10 +36,10 @@ async def announce(
         )
         response.raise_for_status()
     except httpx.HTTPError as err:
-        _LOG.warning("Supervisor-Discovery fehlgeschlagen: %s", err)
+        _LOG.warning("Supervisor discovery failed: %s", err)
         return False
     finally:
         if own_client:
             await client.aclose()
-    _LOG.info("Discovery an Home Assistant gemeldet")
+    _LOG.info("Discovery announced to Home Assistant")
     return True

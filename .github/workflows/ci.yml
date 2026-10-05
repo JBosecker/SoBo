@@ -19,9 +19,9 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           cache-suffix: backend
-      - name: Abhängigkeiten
+      - name: Dependencies
         run: |
-          # uv installiert Python 3.13 selbst (wie im Image), kein setup-python nötig
+          # uv installs Python 3.13 itself (as in the image), no setup-python needed
           uv venv -p 3.13
           uv pip install -e ".[dev]" pip-audit
       - name: ruff
@@ -42,9 +42,9 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           cache-suffix: guest-page
-      - name: Gast-Seite aktuell gebaut?
+      - name: Guest page built and up to date?
         run: python3 scripts/build_guest_page.py --check
-      - name: Browser-Tests (Playwright/Chromium)
+      - name: Browser tests (Playwright/Chromium)
         working-directory: sobo/backend
         run: |
           uv venv -p 3.13
@@ -59,7 +59,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           cache-suffix: integration
-      - name: Abhängigkeiten
+      - name: Dependencies
         run: |
           uv venv -p 3.14
           uv pip install -r requirements_test.txt ruff
@@ -77,21 +77,21 @@ jobs:
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
-    # HACS lädt hacs.json/manifest.json ohne Anmeldung – bei privatem Repo immer rot.
+    # HACS loads hacs.json/manifest.json without authentication – always red for a private repo.
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - uses: hacs/action@main
         with:
           category: integration
-          # Icon im home-assistant/brands-Repository folgt mit dem Release
+          # The icon in the home-assistant/brands repository follows with the release
           ignore: brands
 
   app-config:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: App-Konfiguration prüfen
+      - name: Check app configuration
         uses: frenck/action-addon-linter@v2
         with:
           path: "./sobo"
@@ -101,7 +101,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Build-Matrix (amd64 und aarch64 auf nativen Runnern)
+      - name: Build matrix (amd64 and aarch64 on native runners)
         id: matrix
         uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
         with:
@@ -124,12 +124,12 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Version aus config.yaml
+      - name: Version from config.yaml
         id: version
         run: |
           version="$(grep -E '^version:' sobo/config.yaml | cut -d'"' -f2)"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-      - name: Image bauen (ohne Push)
+      - name: Build image (without push)
         uses: home-assistant/builder/actions/build-image@2026.09.0
         with:
           arch: ${{ matrix.arch }}
@@ -141,8 +141,8 @@ jobs:
           labels: |
             io.hass.type=app
             io.hass.name=SoBo
-            io.hass.description=Sonos-Jukebox als Home Assistant App
+            io.hass.description=Sonos jukebox as a Home Assistant app
             io.hass.url=https://github.com/JBosecker/SoBo
           push: "false"
-          # Signieren erst, wenn Images veröffentlicht werden (Release, Phase 6)
+          # Signing only once images are published (release, phase 6)
           cosign: "false"

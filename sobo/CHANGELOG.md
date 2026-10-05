@@ -2,9 +2,11 @@
 
 ## 0.1.0-dev
 
-- Grundgerüst der App (Ingress, Discovery, Konfiguration)
-- Sonos-Adapter (SoCo-Fork) und Simulation
-- Jukebox-Engine: Queue, Upvotes, Budgets, Limits, Basis-Playlist, Zustände
-- Gast-Seite mit Live-Aktualisierung; Gastzugang über die SoBo-Integration (Nabu-Casa-Cloudhook)
-- Admin-Oberfläche: Live-Ansicht mit Moderation, Gastzugang mit QR-Code und Druckansicht,
-  Einstellungen, Protokoll
+- App skeleton (ingress, discovery, configuration)
+- Sonos adapter (SoCo fork) and simulation
+- Jukebox engine: queue, upvotes, budgets, limits, base playlist, states
+- Guest page with live updates; guest access via the SoBo integration (Nabu Casa cloudhook)
+- Admin UI: live view with moderation, guest access with QR code and print view,
+  settings, log
+- English as the main language; German localization of the admin UI, guest page,
+  "jukebox is off" page, integration and app options

@@ -1,4 +1,4 @@
-"""Config-Flow: Supervisor-Discovery und manuelle Einrichtung (Plan 3.3)."""
+"""Config flow: Supervisor discovery and manual setup (plan 3.3)."""
 
 from __future__ import annotations
 

@@ -1,9 +1,9 @@
-"""Testumgebung für die Gast-Seite: verhält sich wie die Integration.
+"""Test environment for the guest page: behaves like the integration.
 
-GET liefert `guest_page.html`, POST geht an die echte `GuestService` mit
-simuliertem Sonos. Fehler des Cloudhook-Relays lassen sich gezielt einschalten.
+GET serves `guest_page.html`, POST goes to the real `GuestService` with a
+simulated Sonos. Cloudhook relay failures can be switched on deliberately.
 
-Zum Ansehen im Browser:  python -m tests.guest_harness  → http://127.0.0.1:8740/g/demo
+To look at it in a browser:  python -m tests.guest_harness  → http://127.0.0.1:8740/g/demo
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ PAGE = Path(__file__).resolve().parents[3] / "custom_components" / "sobo" / "gue
 
 @dataclass
 class Faults:
-    """Simuliert einen Relay, der Long-Polls abbricht."""
+    """Simulates a relay that aborts long polls."""
 
     fail_wait: bool = False
     actions: list[str] = field(default_factory=list)
@@ -60,7 +60,7 @@ class Harness:
     loop: asyncio.AbstractEventLoop | None = None
 
     def run(self, coro: Any) -> Any:
-        """Führt eine Coroutine in der Server-Loop aus (aus dem Test-Thread)."""
+        """Run a coroutine on the server loop (from the test thread)."""
         assert self.loop is not None
         return asyncio.run_coroutine_threadsafe(coro, self.loop).result(10)
 
@@ -127,7 +127,7 @@ def create_harness(speed: float = 20.0, fallback: bool = True) -> Harness:
 
 @contextlib.contextmanager
 def serve(harness: Harness, port: int = 0) -> Iterator[str]:
-    """Startet den Server in einem Thread und liefert die Basis-URL."""
+    """Start the server in a thread and yield the base URL."""
     config = uvicorn.Config(harness.app, host="127.0.0.1", port=port, log_level="warning")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
@@ -135,7 +135,7 @@ def serve(harness: Harness, port: int = 0) -> Iterator[str]:
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
-            raise RuntimeError("Testserver startet nicht")
+            raise RuntimeError("Test server does not start")
         time.sleep(0.02)
     sock = server.servers[0].sockets[0]
     host, actual_port = sock.getsockname()[:2]
@@ -149,7 +149,7 @@ def serve(harness: Harness, port: int = 0) -> Iterator[str]:
 if __name__ == "__main__":
     demo = create_harness()
     with serve(demo, port=8740) as url:
-        print(f"Gast-Seite: {url}")
+        print(f"Guest page: {url}")
         with contextlib.suppress(KeyboardInterrupt):
             while True:
                 time.sleep(1)

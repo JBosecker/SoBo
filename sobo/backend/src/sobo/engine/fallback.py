@@ -1,4 +1,4 @@
-"""Basis-Playlist: liefert Titel, wenn die Gast-Queue leer ist (Plan 5.1)."""
+"""Base playlist: provides tracks while the guest queue is empty (plan 5.1)."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ class FallbackPlaylist:
             self._rng.shuffle(self._order)
 
     def next_track(self, exclude_keys: Collection[str] = ()) -> Track | None:
-        """Nächster Titel, der nicht in `exclude_keys` liegt (z. B. läuft gerade)."""
+        """Next track that is not in `exclude_keys` (e.g. currently playing)."""
         if not self._tracks:
             return None
         for _ in range(len(self._tracks) * 2):

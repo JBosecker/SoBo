@@ -1,4 +1,4 @@
-"""SQLite-Tabellen (Plan 7)."""
+"""SQLite tables (plan 7)."""
 
 from __future__ import annotations
 

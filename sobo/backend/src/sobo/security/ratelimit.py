@@ -1,5 +1,5 @@
-"""Token-Bucket-Limits. Ohne Client-IP (Cloudhook) wird pro Session und global
-begrenzt (Plan 6)."""
+"""Token bucket limits. Without a client IP (cloudhook) we limit per session and
+globally (plan 6)."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ class TokenBucket:
 
 
 class KeyedRateLimiter:
-    """Ein Bucket pro Schlüssel (z. B. Gast-ID), LRU-begrenzt."""
+    """One bucket per key (e.g. guest ID), LRU-bounded."""
 
     def __init__(
         self,

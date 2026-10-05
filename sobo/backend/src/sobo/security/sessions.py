@@ -1,4 +1,4 @@
-"""Gast-Session-Token: zufällig, nur gehasht gespeichert (Plan 3.2, 6)."""
+"""Guest session tokens: random, stored only as a hash (plan 3.2, 6)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ NICKNAME_MAX = 24
 
 
 def new_session_token() -> tuple[str, str]:
-    """Gibt (Token für den Gast, Hash für die Datenbank) zurück."""
+    """Return (token for the guest, hash for the database)."""
     token = secrets.token_urlsafe(TOKEN_BYTES)
     return token, hash_token(token)
 
@@ -25,8 +25,8 @@ _WHITESPACE = re.compile(r"\s+")
 
 
 def clean_nickname(raw: str) -> str | None:
-    """Filtert Steuer-/Formatzeichen (u. a. Bidi-Overrides), normalisiert Leerraum,
-    begrenzt die Länge. Gibt None zurück, wenn nichts Sinnvolles übrig bleibt."""
+    """Strip control/format characters (incl. bidi overrides), normalise whitespace
+    and limit the length. Returns None if nothing meaningful is left."""
     text = unicodedata.normalize("NFKC", raw)
     text = "".join(ch for ch in text if not unicodedata.category(ch).startswith("C"))
     text = _WHITESPACE.sub(" ", text).strip()

@@ -1,4 +1,4 @@
-"""QR-Code als SVG für den Gastzugang (Admin-UI, Druckansicht)."""
+"""QR code as SVG for the guest access (admin UI, print view)."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from .vendor.qrcodegen import QrCode
 
 
 def qr_svg(text: str, border: int = 4) -> str:
-    """Rendert `text` als QR-Code (Fehlerkorrektur M) in ein kompaktes SVG.
+    """Render `text` as a QR code (error correction M) into a compact SVG.
 
-    Alle dunklen Module stecken in einem einzigen Pfad; das SVG skaliert ohne
-    Unschärfe und eignet sich für den Druck.
+    All dark modules live in a single path; the SVG scales without blurring and
+    is suitable for printing.
     """
     qr = QrCode.encode_text(text, QrCode.Ecc.MEDIUM)
     size = qr.get_size()
@@ -23,7 +23,7 @@ def qr_svg(text: str, border: int = 4) -> str:
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" '
         f'viewBox="0 0 {full} {full}" shape-rendering="crispEdges" role="img" '
-        'aria-label="QR-Code">'
+        'aria-label="QR code">'
         f'<rect width="100%" height="100%" fill="#ffffff"/>'
         f'<path d="{" ".join(parts)}" fill="#000000"/></svg>'
     )

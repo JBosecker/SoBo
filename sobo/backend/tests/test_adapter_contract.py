@@ -1,5 +1,5 @@
-"""Vertrags-Tests: dieselbe Suite gegen FakeSonosAdapter und SoCoAdapter mit
-nachgebautem SoCo-Gerät (Plan 9)."""
+"""Contract tests: the same suite against FakeSonosAdapter and SoCoAdapter with a
+mocked SoCo device (plan 9)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from sobo.sonos.soco_adapter import (
     track_from_browse_item,
 )
 
-# --------------------------------------------------------------------------- SoCo-Attrappen
+# --------------------------------------------------------------------------- SoCo mocks
 
 
 class _Group:
@@ -68,7 +68,7 @@ class FakeSoCoDevice:
         self.state = "PLAYING"
 
     def remove_from_queue(self, index: int) -> None:
-        assert index != self.index, "der laufende Titel darf nie entfernt werden"
+        assert index != self.index, "the playing track must never be removed"
         del self.queue[index]
         if index < self.index:
             self.index -= 1
@@ -160,7 +160,7 @@ class FakeBrowser:
 
 def make_soco_adapter() -> tuple[SoCoAdapter, FakeSoCoDevice]:
     device = FakeSoCoDevice()
-    other = FakeSoCoDevice("RINCON_2", "Küche")
+    other = FakeSoCoDevice("RINCON_2", "Kitchen")
     adapter = SoCoAdapter(
         discover_fn=lambda: {device, other},
         browser_factory=lambda dev, acc: FakeBrowser(),
@@ -170,7 +170,7 @@ def make_soco_adapter() -> tuple[SoCoAdapter, FakeSoCoDevice]:
     return adapter, device
 
 
-# --------------------------------------------------------------------------- Vertrag
+# --------------------------------------------------------------------------- contract
 
 
 @pytest.fixture(params=["fake", "soco"])
@@ -217,7 +217,7 @@ def test_set_next_replaces_previous_next_and_skip_reaches_it(adapter: SonosAdapt
     first, second, third = _tracks(adapter, "disco atlas")
     adapter.play_now(first)
     adapter.set_next(second)
-    adapter.set_next(third)  # ersetzt `second`
+    adapter.set_next(third)  # replaces `second`
     adapter.skip()
     assert adapter.get_status().current_key == adapter.track_key(third)
 
@@ -252,7 +252,7 @@ def test_discover(adapter: SonosAdapter) -> None:
     assert all(s.uid and s.name for s in speakers)
 
 
-# --------------------------------------------------------------------------- SoCo-spezifisch
+# --------------------------------------------------------------------------- SoCo specific
 
 
 def test_soco_enqueue_uses_apple_music_uri_and_account_descriptor() -> None:

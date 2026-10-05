@@ -1,5 +1,5 @@
-"""Treibt die Engine: Polling des Transport-Status alle 1–2 s (Plan 4.2) und
-sofortige Reaktion auf Gast-Aktionen über `Jukebox.wakeup`."""
+"""Drives the engine: polls the transport state every 1–2 s (plan 4.2) and reacts
+immediately to guest actions via `Jukebox.wakeup`."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class Scheduler:
             wakeup.clear()
             try:
                 await self.jukebox.tick()
-            except Exception:  # Der Scheduler darf nie sterben.
-                _LOG.exception("Fehler im Jukebox-Tick")
+            except Exception:  # The scheduler must never die.
+                _LOG.exception("Error in jukebox tick")
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(wakeup.wait(), self.interval)

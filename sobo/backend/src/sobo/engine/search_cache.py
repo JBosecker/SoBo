@@ -1,4 +1,4 @@
-"""Serverseitiger Such-Cache: Gäste sehen nur opake IDs, nie URIs (Plan 6)."""
+"""Server-side search cache: guests only see opaque IDs, never URIs (plan 6)."""
 
 from __future__ import annotations
 

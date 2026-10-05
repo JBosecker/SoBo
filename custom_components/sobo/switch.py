@@ -1,4 +1,4 @@
-"""switch.sobo_active – Jukebox an/aus."""
+"""switch.sobo_active – jukebox on/off."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class SoboActiveSwitch(SoboEntity, SwitchEntity):
         try:
             await self.coordinator.client.set_active(active)
         except SoboApiError as err:
-            raise HomeAssistantError(f"SoBo nicht erreichbar: {err}") from err
+            raise HomeAssistantError(f"SoBo not reachable: {err}") from err
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self, **kwargs: Any) -> None:

@@ -1,4 +1,4 @@
-"""Shared Secret zwischen App und Integration (Plan 3.3, 4.2)."""
+"""Shared secret between the app and the integration (plan 3.3, 4.2)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def load_or_create_secret(path: Path) -> str:
-    """Liest das Secret aus `path` oder erzeugt es (256 Bit) mit Dateirechten 0600."""
+    """Read the secret from `path` or create it (256 bit) with file mode 0600."""
     if path.exists():
         value = path.read_text(encoding="utf-8").strip()
         if len(value) >= 32:

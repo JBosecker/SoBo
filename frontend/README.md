@@ -1,7 +1,9 @@
 # Frontend
 
-- `guest/` – Gast-Seite (HTML, CSS, JS ohne Framework). `scripts/build_guest_page.py`
-  fügt sie zu **einer** Datei mit CSP-Hashes zusammen:
-  `custom_components/sobo/guest_page.html`. Nach Änderungen neu bauen; die CI prüft das.
-- `admin/` – Admin-SPA für Ingress (Phase 3). Bis dahin liefert die App eine
-  einfache Statusseite (`sobo/backend/src/sobo/static/admin.html`).
+- `guest/` – guest page (HTML, CSS, JS without a framework). `scripts/build_guest_page.py`
+  combines it into **one** file with CSP hashes:
+  `custom_components/sobo/guest_page.html`. Rebuild after changes; CI checks this.
+  Texts live in `I18N` in `guest/app.js` (English default, German translation);
+  the HTML contains the English texts with `data-i18n` keys.
+- The admin UI is served by the app itself:
+  `sobo/backend/src/sobo/static/admin/` (no build step, same i18n approach).

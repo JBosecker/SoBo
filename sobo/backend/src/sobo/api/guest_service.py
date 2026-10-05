@@ -1,8 +1,8 @@
-"""Interne Gast-API: verarbeitet die POST-Aktionen, die die Integration vom
-Cloudhook weiterleitet (Plan 3.2, 4.4, 6).
+"""Internal guest API: processes the POST actions the integration forwards from the
+cloudhook (plan 3.2, 4.4, 6).
 
-Framework-unabhängig: `handle(body)` bekommt den rohen Body und liefert
-(HTTP-Status, JSON-Objekt). Die FastAPI-Route ist nur eine dünne Hülle.
+Framework-independent: `handle(body)` receives the raw body and returns
+(HTTP status, JSON object). The FastAPI route is only a thin wrapper.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ _LOG = logging.getLogger(__name__)
 MAX_BODY_BYTES = 4096
 Response = tuple[int, dict[str, Any]]
 
-# ---------------------------------------------------------------- Schemas (strikte Aktionsliste)
+# ---------------------------------------------------------------- schemas (strict action list)
 
 _Session = Annotated[str, Field(min_length=20, max_length=100)]
 
@@ -50,7 +50,7 @@ class WaitAction(_Action):
     action: Literal["wait"]
     session: _Session
     since: int = Field(ge=0, le=2**53)
-    # Die Gast-Seite verkürzt die Wartezeit nach Abbrüchen (Plan 4.4); nie länger als im Admin.
+    # The guest page shortens the wait after aborts (plan 4.4); never longer than the admin setting.
     timeout: int | None = Field(default=None, ge=5, le=60)
 
 
@@ -80,7 +80,7 @@ _ACTION_ADAPTER: TypeAdapter[
     JoinAction | StateAction | WaitAction | SearchAction | SuggestAction | VoteAction
 ] = TypeAdapter(GuestAction)
 
-# Regelverstöße → HTTP-Status. Alles andere aus RuleViolation → 409.
+# Rule violations → HTTP status. Everything else from RuleViolation → 409.
 _STATUS = {
     "inactive": 503,
     "not_configured": 503,
@@ -113,7 +113,7 @@ class GuestService:
         self.search_limiter = KeyedRateLimiter(capacity=6, rate=0.5)
         self.open_polls: dict[str, asyncio.Event] = {}
 
-    # ------------------------------------------------------------------ Einstieg
+    # ------------------------------------------------------------------ entry point
 
     async def handle(self, body: bytes) -> Response:
         if len(body) > MAX_BODY_BYTES:
@@ -129,7 +129,7 @@ class GuestService:
         except RuleViolation as violation:
             return _error(_STATUS.get(violation.code, 409), violation.code, violation.retry_after)
         except SonosError as err:
-            _LOG.warning("Gast-Aktion %s: Sonos-Fehler %s", action.action, err)
+            _LOG.warning("Guest action %s: Sonos error %s", action.action, err)
             return _error(503, "sonos_unavailable")
 
     async def _dispatch(
@@ -159,7 +159,7 @@ class GuestService:
                 return 200, {"ok": True, "state": self.jb.guest_view(guest)}
         raise AssertionError("unreachable")  # pragma: no cover
 
-    # ------------------------------------------------------------------ Aktionen
+    # ------------------------------------------------------------------ actions
 
     def _join(self, action: JoinAction) -> Response:
         nickname = clean_nickname(action.nickname)
@@ -178,7 +178,7 @@ class GuestService:
             return 200, self._changed(guest)
         previous = self.open_polls.get(guest.id)
         if previous is not None:
-            previous.set()  # höchstens ein offenes `wait` pro Session
+            previous.set()  # at most one open `wait` per session
         elif len(self.open_polls) >= access.max_open_long_polls:
             return 200, {"ok": True, "changed": False, "version": notifier.version, "mode": "poll"}
         cancel = asyncio.Event()
@@ -226,7 +226,7 @@ class GuestService:
         return view
 
     def reset(self) -> None:
-        """Nach einer Rotation: offene Long-Polls beenden, Limits zurücksetzen."""
+        """After a rotation: end open long polls, reset limits."""
         for cancel in self.open_polls.values():
             cancel.set()
         self.session_limiter.reset()

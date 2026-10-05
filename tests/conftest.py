@@ -1,4 +1,4 @@
-"""Gemeinsame Fixtures für die Integrationstests."""
+"""Shared fixtures for the integration tests."""
 
 from __future__ import annotations
 
@@ -32,12 +32,12 @@ STATUS: dict[str, Any] = {
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
-    """Lädt custom_components/ aus dem Repository."""
+    """Load custom_components/ from the repository."""
 
 
 @pytest.fixture
 def client() -> Generator[AsyncMock]:
-    """Ersetzt den API-Client der App in Setup und Config-Flow."""
+    """Replace the app API client in setup and the config flow."""
     with (
         patch("custom_components.sobo.SoboClient", autospec=True) as cls,
         patch("custom_components.sobo.config_flow.SoboClient", new=cls),

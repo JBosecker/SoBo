@@ -1,4 +1,4 @@
-"""Gemeinsame Basis der SoBo-Entitäten."""
+"""Common base of the SoBo entities."""
 
 from __future__ import annotations
 

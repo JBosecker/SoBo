@@ -40,7 +40,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* -------- Kopfzeile */
+/* -------- Top bar */
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
@@ -65,7 +65,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .power input:focus-visible + .power-track { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .power-track, .power-thumb { transition: none; } }
 
-/* -------- Reiter */
+/* -------- Tabs */
 .tabs { display: flex; gap: 4px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .tabs button {
   background: none; border: 0; padding: 12px 14px; cursor: pointer; color: var(--muted);
@@ -106,7 +106,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 .progress span { display: block; height: 100%; width: 0; background: var(--accent); }
 .next-line { font-size: 14px; }
 
-/* Titelstreifen wie auf der Gast-Seite */
+/* Track strips like on the guest page */
 .strips { list-style: none; padding: 0; display: grid; gap: 8px; }
 .strip { display: grid; grid-template-columns: 56px 1fr auto; align-items: stretch; background: var(--paper); color: var(--paper-ink); border-radius: 4px; overflow: hidden; }
 .strip-votes { display: grid; place-content: center; text-align: center; background: #e2d3ab; }
@@ -133,7 +133,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 .history-heading { margin-top: 18px; }
 .history { padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 2px; margin-top: 6px; }
 
-/* -------- Gastzugang */
+/* -------- Guest access */
 .access-card { display: grid; grid-template-columns: 260px 1fr; gap: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
 @media (max-width: 700px) { .access-card { grid-template-columns: 1fr; } }
 .qr-wrap { display: grid; place-items: center; background: #fff; border-radius: 8px; min-height: 260px; }
@@ -145,7 +145,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 .facts dd { margin: 0; }
 .confirm { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--danger); border-radius: 8px; margin-top: 8px; }
 
-/* -------- Einstellungen */
+/* -------- Settings */
 .settings-form { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 14px; }
 .settings-form h2 { font-size: 17px; }
 .settings-form .intro { color: var(--muted); font-size: 14px; margin-top: -8px; }
@@ -167,7 +167,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 .form-actions { display: flex; align-items: center; gap: 12px; }
 .form-actions .status { color: var(--muted); font-size: 14px; }
 
-/* -------- Protokoll */
+/* -------- Log */
 .log { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; }
 .log th, .log td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .log th { color: var(--muted); font-weight: 600; }
@@ -175,7 +175,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 
 .toast { position: fixed; right: 20px; bottom: 20px; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; max-width: 360px; }
 
-/* -------- Druck: nur das Aushängeblatt */
+/* -------- Print: only the poster sheet */
 .print-sheet { display: none; }
 @media print {
   @page { size: A4 portrait; margin: 18mm; }

@@ -1,4 +1,4 @@
-"""Sensoren: läuft gerade, Queue-Länge, aktive Gäste, Gast-URL (für eine QR-Karte)."""
+"""Sensors: now playing, queue length, active guests, guest URL (for a QR card)."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ class SoboSensor(SoboEntity, SensorEntity):
 
 
 class SoboGuestUrlSensor(SoboEntity, SensorEntity):
-    """Cloudhook-URL, ersatzweise die lokale URL – für eine QR-Karte im Dashboard."""
+    """Cloudhook URL, or the local URL as a fallback – for a QR card on a dashboard."""
 
     def __init__(self, coordinator: SoboCoordinator, guest_access: GuestAccess) -> None:
         super().__init__(coordinator, "guest_url")

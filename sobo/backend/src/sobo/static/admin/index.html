@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,6 +9,7 @@
 <script src="assets/admin.js" defer></script>
 </head>
 <body>
+<!-- Texts are English by default; admin.js swaps in the browser language (data-i18n). -->
 <header class="topbar">
   <div class="brand">
     <span class="brand-name">SoBo</span>
@@ -17,16 +18,16 @@
   <label class="power">
     <input type="checkbox" id="power" role="switch" aria-describedby="power-hint">
     <span class="power-track" aria-hidden="true"><span class="power-thumb"></span></span>
-    <span id="power-label">Jukebox aus</span>
+    <span id="power-label" data-i18n="power_off">Jukebox off</span>
   </label>
-  <p id="power-hint" class="visually-hidden">Schaltet die Jukebox für Gäste an oder aus.</p>
+  <p id="power-hint" class="visually-hidden" data-i18n="power_hint">Turns the jukebox on or off for guests.</p>
 </header>
 
-<nav class="tabs" role="tablist" aria-label="Bereiche">
-  <button role="tab" id="tab-live" aria-controls="panel-live" aria-selected="true">Live</button>
-  <button role="tab" id="tab-access" aria-controls="panel-access" aria-selected="false">Gastzugang</button>
-  <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">Einstellungen</button>
-  <button role="tab" id="tab-log" aria-controls="panel-log" aria-selected="false">Protokoll</button>
+<nav class="tabs" role="tablist" aria-label="Sections" data-i18n-attr="aria-label:tabs_label">
+  <button role="tab" id="tab-live" aria-controls="panel-live" aria-selected="true" data-i18n="tab_live">Live</button>
+  <button role="tab" id="tab-access" aria-controls="panel-access" aria-selected="false" data-i18n="tab_access">Guest access</button>
+  <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" data-i18n="tab_settings">Settings</button>
+  <button role="tab" id="tab-log" aria-controls="panel-log" aria-selected="false" data-i18n="tab_log">Log</button>
 </nav>
 
 <main>
@@ -39,70 +40,70 @@
   <section id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="panel live">
     <div class="live-main">
       <article class="now" aria-labelledby="now-heading">
-        <h2 id="now-heading">Läuft gerade</h2>
+        <h2 id="now-heading" data-i18n="now_heading">Now playing</h2>
         <div class="now-body">
           <img id="now-art" class="now-art" alt="" hidden>
           <div class="now-text">
-            <p id="now-title" class="now-title">Nichts</p>
+            <p id="now-title" class="now-title" data-i18n="nothing">Nothing</p>
             <p id="now-meta" class="muted"></p>
             <div class="progress" aria-hidden="true"><span id="now-bar"></span></div>
           </div>
         </div>
         <p id="next-line" class="next-line muted"></p>
         <div class="row">
-          <button type="button" class="button" id="skip">Überspringen</button>
-          <button type="button" class="button" id="freeze" aria-pressed="false">Warteschlange anhalten</button>
+          <button type="button" class="button" id="skip" data-i18n="skip">Skip</button>
+          <button type="button" class="button" id="freeze" aria-pressed="false" data-i18n="freeze">Freeze queue</button>
         </div>
       </article>
 
       <section aria-labelledby="queue-heading">
         <div class="section-head">
-          <h2 id="queue-heading">Warteschlange</h2>
+          <h2 id="queue-heading" data-i18n="queue_heading">Queue</h2>
           <span id="queue-count" class="muted"></span>
         </div>
-        <p id="queue-empty" class="empty">Noch keine Wünsche. Läuft die Basis-Playlist, füllt sie die Pausen.</p>
+        <p id="queue-empty" class="empty" data-i18n="queue_empty">No requests yet. If a base playlist is set, it fills the gaps.</p>
         <ol id="queue" class="strips"></ol>
       </section>
     </div>
 
     <aside class="live-side" aria-labelledby="guests-heading">
       <div class="section-head">
-        <h2 id="guests-heading">Gäste</h2>
+        <h2 id="guests-heading" data-i18n="guests_heading">Guests</h2>
         <span id="guest-count" class="muted"></span>
       </div>
-      <p id="guests-empty" class="empty">Noch niemand dabei.</p>
+      <p id="guests-empty" class="empty" data-i18n="guests_empty">Nobody has joined yet.</p>
       <ul id="guests" class="guests"></ul>
-      <h2 id="history-heading" class="history-heading" hidden>Zuletzt gespielt</h2>
+      <h2 id="history-heading" class="history-heading" hidden data-i18n="history_heading">Recently played</h2>
       <ol id="history" class="history"></ol>
     </aside>
   </section>
 
-  <!-- ===================================================== Gastzugang -->
+  <!-- ===================================================== Guest access -->
   <section id="panel-access" role="tabpanel" aria-labelledby="tab-access" class="panel access" hidden>
     <div class="access-card">
       <div class="qr-wrap">
-        <img id="qr" class="qr" alt="QR-Code für den Gastzugang" hidden>
+        <img id="qr" class="qr" alt="QR code for guest access" data-i18n-attr="alt:qr_alt" hidden>
         <p id="qr-missing" class="empty"></p>
       </div>
       <div class="access-text">
-        <h2>So kommen Gäste rein</h2>
+        <h2 data-i18n="access_heading">How guests get in</h2>
         <p id="access-explain" class="muted"></p>
         <p class="url-line"><code id="guest-url"></code></p>
         <div class="row">
-          <button type="button" class="button" id="copy-url">Link kopieren</button>
-          <button type="button" class="button" id="print">QR-Code drucken</button>
+          <button type="button" class="button" id="copy-url" data-i18n="copy_link">Copy link</button>
+          <button type="button" class="button" id="print" data-i18n="print_qr">Print QR code</button>
         </div>
         <dl class="facts">
-          <dt>Integration</dt><dd id="fact-integration"></dd>
+          <dt data-i18n="fact_integration">Integration</dt><dd id="fact-integration"></dd>
           <dt>Nabu Casa</dt><dd id="fact-cloud"></dd>
         </dl>
         <div class="rotate">
-          <button type="button" class="button danger" id="rotate">Gastzugang erneuern</button>
+          <button type="button" class="button danger" id="rotate" data-i18n="rotate">Renew guest access</button>
           <div id="rotate-confirm" class="confirm" hidden>
-            <p>Der alte QR-Code funktioniert danach nicht mehr, und alle Gäste müssen neu beitreten.</p>
+            <p data-i18n="rotate_warning">The old QR code stops working and every guest has to join again.</p>
             <div class="row">
-              <button type="button" class="button danger" id="rotate-yes">Erneuern</button>
-              <button type="button" class="button" id="rotate-no">Abbrechen</button>
+              <button type="button" class="button danger" id="rotate-yes" data-i18n="rotate_yes">Renew</button>
+              <button type="button" class="button" id="rotate-no" data-i18n="cancel">Cancel</button>
             </div>
           </div>
         </div>
@@ -111,7 +112,7 @@
     <form class="settings-form" data-section="guest_access" novalidate></form>
   </section>
 
-  <!-- ===================================================== Einstellungen -->
+  <!-- ===================================================== Settings -->
   <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" class="panel" hidden>
     <form class="settings-form" data-section="speaker" novalidate></form>
     <form class="settings-form" data-section="music" novalidate></form>
@@ -120,20 +121,20 @@
     <form class="settings-form" data-section="schedule" novalidate></form>
   </section>
 
-  <!-- ===================================================== Protokoll -->
+  <!-- ===================================================== Log -->
   <section id="panel-log" role="tabpanel" aria-labelledby="tab-log" class="panel" hidden>
     <table class="log">
-      <thead><tr><th scope="col">Zeit</th><th scope="col">Wer</th><th scope="col">Was</th><th scope="col">Details</th></tr></thead>
+      <thead><tr><th scope="col" data-i18n="log_time">Time</th><th scope="col" data-i18n="log_who">Who</th><th scope="col" data-i18n="log_what">What</th><th scope="col" data-i18n="log_details">Details</th></tr></thead>
       <tbody id="log"></tbody>
     </table>
   </section>
 </main>
 
-<!-- Nur für den Druck sichtbar -->
+<!-- Only visible when printing -->
 <section class="print-sheet" aria-hidden="true">
-  <h1>Wünsch dir einen Song!</h1>
+  <h1 data-i18n="print_title">Request a song!</h1>
   <img id="print-qr" alt="">
-  <p class="print-steps">Mit der Handykamera scannen, Namen eingeben, Song suchen und vorschlagen.</p>
+  <p class="print-steps" data-i18n="print_steps">Scan with your phone camera, enter a name, search for a song and suggest it.</p>
   <p id="print-code" class="print-code" hidden></p>
 </section>
 

@@ -1,4 +1,4 @@
-"""Admin-API und Admin-Seite, nur über Ingress erreichbar (Plan 4.3, 6)."""
+"""Admin API and admin page, reachable through ingress only (plan 4.3, 6)."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def ctx_of(request: Request) -> AppContext:
 
 
 def actor_of(request: Request) -> str:
-    """HA-Benutzer aus den Ingress-Headern, fürs Audit-Log."""
+    """HA user from the ingress headers, for the audit log."""
     name = request.headers.get("X-Remote-User-Display-Name") or request.headers.get(
         "X-Remote-User-Name"
     )
@@ -181,7 +181,7 @@ async def fallback_sources(ctx: Ctx) -> list[dict[str, str]]:
 
 ADMIN_DIR = Path(str(resources.files("sobo") / "static" / "admin"))
 
-# Ingress lädt die Seite im HA-Frontend (gleiche Herkunft) – frame-ancestors 'self'.
+# Ingress loads the page inside the HA frontend (same origin) – frame-ancestors 'self'.
 ADMIN_CSP = "; ".join(
     [
         "default-src 'none'",
@@ -216,7 +216,7 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
     ) -> Response:
         client = request.client.host if request.client else None
         if client not in trusted:
-            # Für Fremde existiert hier nichts (Plan 6).
+            # For strangers nothing exists here (plan 6).
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         response = await call_next(request)
         for header, value in SECURITY_HEADERS.items():

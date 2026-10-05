@@ -1,1 +1,1 @@
-"""Tests der SoBo-Integration."""
+"""Tests of the SoBo integration."""

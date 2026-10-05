@@ -1,7 +1,7 @@
-"""SonosAdapter auf Basis des SoCo-Forks mit Music-Services-Browser (Plan 4.2).
+"""SonosAdapter based on the SoCo fork with the music services browser (plan 4.2).
 
-Alle SoCo-Aufrufe sind hier gekapselt, damit ein Wechsel oder Update des Forks
-nur diese Datei betrifft. Die Methoden laufen ausschließlich im Sonos-Worker-Thread.
+All SoCo calls are encapsulated here so that switching or updating the fork only
+affects this file. The methods run exclusively on the Sonos worker thread.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ _CONTAINER_PREFIX = "x-rincon-cpcontainer:"
 
 
 def parse_hms(value: str | None) -> float | None:
-    """'0:03:25' → 205.0; leere oder ungültige Werte → None."""
+    """'0:03:25' → 205.0; empty or invalid values → None."""
     if not value or value == "NOT_IMPLEMENTED":
         return None
     try:
@@ -78,9 +78,9 @@ def https_or_empty(url: str) -> str:
 
 
 def decode_container_favorite(uri: str) -> tuple[str, int | None] | None:
-    """Zerlegt eine Favoriten-URI ``x-rincon-cpcontainer:<8 hex><id>?sid=…``.
+    """Split a favourite URI ``x-rincon-cpcontainer:<8 hex><id>?sid=…``.
 
-    Gibt (Container-ID, Service-ID) zurück oder None, wenn es kein Container ist.
+    Returns (container ID, service ID), or None if it is not a container.
     """
     if not uri.startswith(_CONTAINER_PREFIX):
         return None
@@ -98,7 +98,7 @@ def decode_container_favorite(uri: str) -> tuple[str, int | None] | None:
 
 
 def track_from_browse_item(item: Any, account_id: str) -> Track | None:
-    """MusicServiceBrowseItem → Track (nur abspielbare Titel)."""
+    """MusicServiceBrowseItem → Track (playable tracks only)."""
     raw: Mapping[str, Any] = item.raw or {}
     item_type = str(item.item_type or raw.get("itemType", "")).rsplit(".", 1)[-1].lower()
     if item.kind == "mediaCollection" or (item_type and item_type != "track"):
@@ -125,7 +125,7 @@ class SoCoAdapter:
         browser_factory: Callable[[Any, Any], Any] | None = None,
         accounts_fn: Callable[[Any], list[Any]] | None = None,
     ) -> None:
-        # Abhängigkeiten injizierbar, damit Tests ohne Netzwerk laufen.
+        # Dependencies are injectable so tests run without a network.
         self._discover_fn = discover_fn or _default_discover
         self._browser_factory = browser_factory or _default_browser
         self._accounts_fn = accounts_fn or _default_accounts
@@ -133,12 +133,12 @@ class SoCoAdapter:
         self._browsers: dict[str, Any] = {}
         self._accounts: dict[str, Any] = {}
 
-    # -- Hilfen -------------------------------------------------------------
+    # -- Helpers -------------------------------------------------------------
 
     @property
     def coordinator(self) -> Any:
         if self._coordinator is None:
-            raise SonosError("Kein Lautsprecher konfiguriert")
+            raise SonosError("No speaker configured")
         return self._coordinator
 
     def _speakers(self) -> list[Any]:
@@ -150,7 +150,7 @@ class SoCoAdapter:
                 self.get_accounts()
             account = self._accounts.get(account_id)
             if account is None:
-                raise SonosError(f"Konto {account_id} nicht gefunden")
+                raise SonosError(f"Account {account_id} not found")
             self._browsers[account_id] = self._browser_factory(self.coordinator, account)
         return self._browsers[account_id]
 
@@ -185,7 +185,7 @@ class SoCoAdapter:
     def _remove_after_current(self) -> None:
         coord = self.coordinator
         info = coord.get_current_track_info()
-        position = _as_int(info.get("playlist_position")) or 0  # 1-basiert, 0 = keiner
+        position = _as_int(info.get("playlist_position")) or 0  # 1-based, 0 = none
         size = int(coord.queue_size)
         for index in range(size - 1, max(position, 1) - 1, -1):
             coord.remove_from_queue(index)
@@ -211,7 +211,7 @@ class SoCoAdapter:
         speakers = {s.uid: s for s in self._speakers()}
         coord = speakers.get(config.coordinator_uid)
         if coord is None:
-            raise SonosError(f"Lautsprecher {config.coordinator_uid} nicht gefunden")
+            raise SonosError(f"Speaker {config.coordinator_uid} not found")
         if not coord.is_coordinator:
             coord.unjoin()
         for uid in config.members:
@@ -254,7 +254,7 @@ class SoCoAdapter:
         volume: int | None
         try:
             volume = int(coord.group.volume)
-        except Exception:  # Gruppenlautstärke ist optional
+        except Exception:  # group volume is optional
             volume = None
         return PlaybackStatus(
             transport=state,
@@ -287,7 +287,7 @@ class SoCoAdapter:
         try:
             self.coordinator.next()
         except SoCoUPnPException:
-            # Kein weiterer Titel in der Sonos-Queue → anhalten; die Engine startet neu.
+            # No further track in the Sonos queue → stop; the engine starts the next one.
             self.coordinator.stop()
 
     def pause(self) -> None:
@@ -319,7 +319,7 @@ class SoCoAdapter:
             return self._sonos_playlist_tracks(ident)
         if kind == "favorite":
             return self._service_container_tracks(ident)
-        raise SonosError(f"Unbekannte Quelle {source_id}")
+        raise SonosError(f"Unknown source {source_id}")
 
     def _sonos_playlist_tracks(self, playlist_id: str) -> list[Track]:
         from soco.data_structures import to_didl_string
@@ -349,7 +349,7 @@ class SoCoAdapter:
         if not self._accounts:
             self.get_accounts()
         if not self._accounts:
-            raise SonosError("Kein Apple-Music-Konto im Sonos-Haushalt")
+            raise SonosError("No Apple Music account in the Sonos household")
         account_id = next(iter(self._accounts))
         browser = self._browser(account_id)
         result = browser.get_metadata(container_id, 0, 200)
@@ -360,7 +360,7 @@ class SoCoAdapter:
         return uri_key(track.uri) if track.uri else track.item_id
 
 
-# -- Standard-Abhängigkeiten (echtes SoCo) ------------------------------------
+# -- Default dependencies (real SoCo) ------------------------------------
 
 
 def _default_discover() -> set[Any] | None:

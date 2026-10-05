@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Baut die Gast-Seite zu EINER Datei mit Inline-CSS/JS und CSP-Hashes (Plan 4.4).
+"""Builds the guest page into ONE file with inline CSS/JS and CSP hashes (plan 4.4).
 
-python scripts/build_guest_page.py           # schreibt custom_components/sobo/guest_page.html
-python scripts/build_guest_page.py --check   # CI: bricht ab, wenn die Datei veraltet ist
+python scripts/build_guest_page.py           # writes custom_components/sobo/guest_page.html
+python scripts/build_guest_page.py --check   # CI: fails if the file is out of date
 """
 
 from __future__ import annotations
@@ -29,9 +29,9 @@ def build() -> str:
     script = (SRC / "app.js").read_text(encoding="utf-8").strip()
     for marker in ("{{CSP}}", "{{STYLE}}", "{{SCRIPT}}"):
         if template.count(marker) != 1:
-            raise SystemExit(f"Platzhalter {marker} muss genau einmal vorkommen")
+            raise SystemExit(f"Placeholder {marker} must occur exactly once")
     if "</script" in script.lower() or "</style" in style.lower():
-        raise SystemExit("Schließendes Tag im Inline-Inhalt")
+        raise SystemExit("Closing tag inside inline content")
     csp = "; ".join(
         [
             "default-src 'none'",
@@ -48,26 +48,27 @@ def build() -> str:
     )
     size = len(page.encode("utf-8"))
     if size > MAX_BYTES:
-        raise SystemExit(f"Gast-Seite ist {size} Bytes groß (Ziel < {MAX_BYTES})")
+        raise SystemExit(f"Guest page is {size} bytes (target < {MAX_BYTES})")
     return page
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check", action="store_true", help="nur prüfen, nicht schreiben")
+    parser.add_argument("--check", action="store_true", help="only check, do not write")
     args = parser.parse_args()
     page = build()
     if args.check:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
         if current != page:
             print(
-                "guest_page.html ist veraltet: python scripts/build_guest_page.py", file=sys.stderr
+                "guest_page.html is out of date: python scripts/build_guest_page.py",
+                file=sys.stderr,
             )
             return 1
-        print(f"guest_page.html aktuell ({len(page.encode())} Bytes)")
+        print(f"guest_page.html is up to date ({len(page.encode())} bytes)")
         return 0
     OUT.write_text(page, encoding="utf-8")
-    print(f"{OUT.relative_to(ROOT)} geschrieben ({len(page.encode())} Bytes)")
+    print(f"{OUT.relative_to(ROOT)} written ({len(page.encode())} bytes)")
     return 0
 
 

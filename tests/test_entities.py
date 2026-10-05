@@ -1,4 +1,4 @@
-"""Entitäten: Schalter, Sensoren, Buttons (Plan 4.5)."""
+"""Entities: switch, sensors, buttons (plan 4.5)."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ async def test_guest_url_falls_back_to_local(hass: HomeAssistant, client: AsyncM
     state = hass.states.get(entity_id(hass, "sensor", "guest_url"))
     assert state.attributes["cloud_url"] is None
     local = state.attributes["local_url"]
-    if local is not None:  # nur wenn HA eine interne URL kennt
+    if local is not None:  # only if HA knows an internal URL
         assert local.endswith(entry.data[CONF_WEBHOOK_ID])
         assert state.state == local
 

@@ -1,4 +1,4 @@
-"""Engine-Tests gegen den FakeSonosAdapter mit simulierter Zeit (Plan 9, Phase 2)."""
+"""Engine tests against the FakeSonosAdapter with simulated time (plan 9, phase 2)."""
 
 from __future__ import annotations
 
@@ -28,14 +28,14 @@ async def apply(jb: Jukebox, **overrides: object) -> None:
 
 
 async def finish_current(jb: Jukebox, fake: FakeSonosAdapter, clock: ManualClock) -> None:
-    """Spult bis kurz nach dem Ende des laufenden Titels und lässt die Engine reagieren."""
+    """Fast-forward to just after the end of the playing track and let the engine react."""
     status = fake.get_status()
     assert status.duration is not None and status.position is not None
     clock.advance(status.duration - status.position + 1)
     await jb.tick()
 
 
-# --------------------------------------------------------------------------- Grundzustände
+# --------------------------------------------------------------------------- basic states
 
 
 async def test_inactive_does_nothing(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
@@ -89,14 +89,14 @@ async def test_ranking_picks_most_votes_when_next_is_chosen(
     a, b, c = (make_guest(jukebox, n) for n in "ABC")
     await suggest_title(jukebox, a, "Slow Comet")
     await jukebox.tick()
-    # Kein weiterer Tick zwischen den Vorschlägen: beide warten gleichzeitig.
+    # No tick between the suggestions: both are waiting at the same time.
     low = await suggest_title(jukebox, a, "Velvet Engine")
     high = await suggest_title(jukebox, b, "Copper Sky")
     await jukebox.vote(c, high.id)
     await jukebox.tick()
     assert jukebox.queue.next_item is high
     assert low.state == ItemState.QUEUED
-    # Fixiert: weitere Votes für `low` ändern den nächsten Titel nicht mehr.
+    # Fixed: more votes for `low` no longer change the next track.
     d, e = make_guest(jukebox, "D"), make_guest(jukebox, "E")
     await jukebox.vote(d, low.id)
     await jukebox.vote(e, low.id)
@@ -168,7 +168,7 @@ async def test_unavailable_track_is_skipped(jukebox: Jukebox, fake: FakeSonosAda
     assert jukebox.queue.next_item is ok
 
 
-# --------------------------------------------------------------------------- Regeln
+# --------------------------------------------------------------------------- rules
 
 
 async def test_vote_budget_sliding_window(jukebox: Jukebox, clock: ManualClock) -> None:
@@ -302,7 +302,7 @@ async def test_blocked_guest_and_frozen_queue(jukebox: Jukebox) -> None:
 
 async def test_unknown_result_id(jukebox: Jukebox) -> None:
     with pytest.raises(RuleViolation) as err:
-        await jukebox.suggest(make_guest(jukebox), "nicht-vorhanden")
+        await jukebox.suggest(make_guest(jukebox), "does-not-exist")
     assert err.value.code == "unknown_result"
 
 
@@ -327,7 +327,7 @@ async def test_presence_code_and_guest_limit(jukebox: Jukebox) -> None:
     assert err.value.code == "too_many_guests"
 
 
-# --------------------------------------------------------------------------- Admin & Eingriffe
+# --------------------------------------------------------------------------- admin & interventions
 
 
 async def test_manual_override_and_resume(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
@@ -340,7 +340,7 @@ async def test_manual_override_and_resume(jukebox: Jukebox, fake: FakeSonosAdapt
     assert jukebox.state == JukeboxState.MANUAL_OVERRIDE
     assert jukebox.override_info == "Office Party – Overtime Anthem"
     assert "manual_override" in [e.action for e in jukebox.repo.recent_audit(5)]
-    await jukebox.tick()  # bleibt im Override, greift nicht ein
+    await jukebox.tick()  # stays in override, does not intervene
     assert fake.queue[0].title == "Overtime Anthem"
     await jukebox.resume_control("admin")
     await jukebox.tick()
@@ -448,7 +448,7 @@ async def test_sonos_error_sets_error_state(jukebox: Jukebox, fake: FakeSonosAda
     assert jukebox.last_error is None
 
 
-# --------------------------------------------------------------------------- Persistenz & Ansichten
+# --------------------------------------------------------------------------- persistence & views
 
 
 async def test_reload_restores_queue_and_votes(
@@ -465,7 +465,7 @@ async def test_reload_restores_queue_and_votes(
     restored = restarted.queue.get(queued.id)
     assert restored is not None
     assert restored.voters == {a.id, b.id}
-    assert restored.state == ItemState.QUEUED  # NEXT wird nach Neustart neu bestimmt
+    assert restored.state == ItemState.QUEUED  # NEXT is chosen again after a restart
     assert restarted.guest_for_token(a.token_hash) is not None
     await restarted.tick()
     assert restarted.queue.playing is not None
@@ -505,7 +505,7 @@ async def test_transient_stop_right_after_start_is_ignored(
 ) -> None:
     item = await suggest_title(jukebox, make_guest(jukebox), "Slow Comet")
     await jukebox.tick()
-    fake.transport = TransportState.STOPPED  # kurzer Übergang wie bei echtem Sonos
+    fake.transport = TransportState.STOPPED  # short transition like on a real Sonos
     clock.advance(1)
     await jukebox.tick()
     assert item.state == ItemState.PLAYING

@@ -1,9 +1,9 @@
-"""Jukebox-Engine: Gast-Aktionen, Admin-Aktionen und Wiedergabesteuerung (Plan 5).
+"""Jukebox engine: guest actions, admin actions and playback control (plan 5).
 
-Prinzip „SoBo führt, Sonos spielt“: Die Sonos-Queue enthält nur
-[aktuell, nächster]. Sobald ein Titel startet, wird der dann beste Titel als
-nächster eingereiht und ist ab dann fixiert. `tick()` wird vom Scheduler
-regelmäßig (und nach Gast-Aktionen sofort) aufgerufen.
+Principle "SoBo leads, Sonos plays": the Sonos queue only holds [current, next].
+As soon as a track starts, the best track at that moment is enqueued as next and
+is fixed from then on. The scheduler calls `tick()` regularly (and immediately
+after guest actions).
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ _LOG = logging.getLogger(__name__)
 SEARCH_RESULTS = 20
 GUEST_QUEUE_LIMIT = 30
 MAX_ENQUEUE_ATTEMPTS = 3
-# Ein STOPPED kurz nach dem Start ist ein Übergang, kein Titelende.
+# A STOPPED right after starting is a transition, not the end of the track.
 MIN_PLAY_SECONDS = 5
 FALLBACK_RETRY = timedelta(seconds=60)
 
@@ -59,8 +59,8 @@ def _set_next(track: Track) -> Callable[[SonosAdapter], None]:
 class SearchHit:
     opaque_id: str
     track: Track
-    queued_item_id: str | None  # bereits in der Queue → Vorschlag zählt als Vote
-    blocked: str | None  # Regelverstoß, der einen Vorschlag verhindern würde
+    queued_item_id: str | None  # already queued → suggesting counts as a vote
+    blocked: str | None  # rule violation that would prevent a suggestion
 
 
 class Jukebox:
@@ -93,7 +93,7 @@ class Jukebox:
                 item.removed_reason = "restart"
                 repo.save_item(item)
             elif item.state == ItemState.NEXT:
-                # Nach einem Neustart wird der nächste Titel neu bestimmt.
+                # After a restart the next track is chosen again.
                 item.state = ItemState.QUEUED
                 repo.save_item(item)
             self.queue.add(item)
@@ -117,7 +117,7 @@ class Jukebox:
         self._next_dirty = False
         self._was_active = False
 
-    # ------------------------------------------------------------------ Hilfen
+    # ------------------------------------------------------------------ helpers
 
     def _now(self) -> datetime:
         return self.clock.now()
@@ -132,12 +132,12 @@ class Jukebox:
         self.repo.add_audit(AuditEntry(self._now(), actor, action, detail))
 
     def record(self, actor: str, action: str, detail: str = "") -> None:
-        """Audit-Eintrag von außerhalb der Engine (API, Integration)."""
+        """Audit entry from outside the engine (API, integration)."""
         self._audit(actor, action, detail)
 
     def _set_state(self, state: JukeboxState) -> None:
         if state != self.state:
-            _LOG.info("Zustand %s → %s", self.state, state)
+            _LOG.info("State %s → %s", self.state, state)
             self.state = state
             self._changed()
 
@@ -158,7 +158,7 @@ class Jukebox:
     def key(self, item: QueueItem) -> str:
         return self.queue.key(item)
 
-    # ------------------------------------------------------------------ Gäste
+    # ------------------------------------------------------------------ guests
 
     def guest_for_token(self, token_hash: str) -> Guest | None:
         guest_id = self._guest_by_token.get(token_hash)
@@ -172,7 +172,7 @@ class Jukebox:
 
     def touch(self, guest: Guest) -> None:
         now = self._now()
-        # Nicht bei jeder Anfrage schreiben – minütlich genügt für „aktive Gäste“.
+        # Do not write on every request – once a minute is enough for "active guests".
         if (now - guest.last_seen).total_seconds() >= 60:
             guest.last_seen = now
             self.repo.save_guest(guest)
@@ -329,7 +329,7 @@ class Jukebox:
         self._changed()
         self._kick()
 
-    # ------------------------------------------------------------------ Admin
+    # ------------------------------------------------------------------ admin
 
     async def update_settings(self, new: JukeboxSettings, actor: str) -> None:
         async with self._lock:
@@ -403,7 +403,7 @@ class Jukebox:
         self._kick()
 
     async def resume_control(self, actor: str) -> None:
-        """Nach `manual_override` übernimmt SoBo wieder und startet den besten Titel."""
+        """After `manual_override`, SoBo takes over again and starts the best track."""
         async with self._lock:
             current = self.queue.playing
             if current is not None:
@@ -426,7 +426,7 @@ class Jukebox:
             self._audit(actor, "rotate_guest_access")
             self._changed()
 
-    # ------------------------------------------------------------------ Wiedergabe
+    # ------------------------------------------------------------------ playback
 
     def _finish(self, item: QueueItem, state: ItemState) -> None:
         item.state = state
@@ -459,7 +459,7 @@ class Jukebox:
         try:
             tracks = await self.worker.call(lambda a: a.fallback_tracks(source), timeout=30)
         except SonosError as err:
-            _LOG.warning("Basis-Playlist %s nicht ladbar: %s", source, err)
+            _LOG.warning("Cannot load base playlist %s: %s", source, err)
             self.fallback_error = str(err)
             self._fallback_retry_at = self._now() + FALLBACK_RETRY
             return
@@ -471,7 +471,7 @@ class Jukebox:
         self._fallback_source = source
 
     def _candidate(self, exclude: set[str]) -> QueueItem | None:
-        """Bester wartender Gasttitel, sonst ein neuer Titel aus der Basis-Playlist."""
+        """Best waiting guest track, otherwise a new track from the base playlist."""
         for item in self.queue.waiting():
             if self.key(item) not in exclude:
                 return item
@@ -485,7 +485,7 @@ class Jukebox:
         return None
 
     def _reject(self, item: QueueItem, reason: str) -> None:
-        _LOG.warning("Titel %s nicht abspielbar: %s", item.track.item_id, reason)
+        _LOG.warning("Track %s is not playable: %s", item.track.item_id, reason)
         item.state = ItemState.REMOVED
         item.removed_reason = "unavailable"
         item.finished_at = self._now()
@@ -511,12 +511,12 @@ class Jukebox:
         return False
 
     async def _fill_next(self) -> None:
-        """Sorgt dafür, dass hinter dem aktuellen Titel genau der richtige nächste steht."""
+        """Make sure exactly the right next track follows the current one."""
         current = self.queue.playing
         if current is None:
             return
         nxt = self.queue.next_item
-        # Fixiert – außer ein Fallback-Titel wartet, während Gasttitel da sind.
+        # Fixed – unless a fallback track is waiting while guest tracks are available.
         if (
             nxt is not None
             and not self._next_dirty
@@ -558,9 +558,9 @@ class Jukebox:
         return True
 
     async def ensure_speaker(self) -> None:
-        """Lautsprecher konfigurieren (z. B. bevor die Admin-UI Konten abfragt).
+        """Configure the speaker (e.g. before the admin UI lists accounts).
 
-        Sonst geschieht das erst beim ersten Tick einer eingeschalteten Jukebox.
+        Otherwise this only happens on the first tick of an active jukebox.
         """
         async with self._lock:
             if not await self._apply_speaker_config():
@@ -573,16 +573,16 @@ class Jukebox:
             try:
                 await self.worker.call(lambda a: a.clear_next())
             except SonosError as err:
-                _LOG.warning("Konnte nächsten Titel nicht entfernen: %s", err)
+                _LOG.warning("Could not remove the next track: %s", err)
         self._set_state(JukeboxState.INACTIVE)
 
     async def tick(self) -> None:
-        """Ein Schritt der Wiedergabesteuerung. Fehler landen in `last_error`."""
+        """One step of playback control. Errors end up in `last_error`."""
         async with self._lock:
             try:
                 await self._tick()
             except SonosError as err:
-                _LOG.warning("Sonos-Fehler: %s", err)
+                _LOG.warning("Sonos error: %s", err)
                 self.last_error = str(err)
                 self._set_state(JukeboxState.ERROR)
             self.queue.prune()
@@ -639,7 +639,7 @@ class Jukebox:
 
         if key is not None and key == self.key(current):
             if status.transport == TransportState.STOPPED and nxt is None and settled:
-                # Queue ist ausgelaufen: der letzte Titel ist zu Ende.
+                # The queue ran out: the last track has finished.
                 self._finish(current, ItemState.PLAYED)
                 if await self._start_playback():
                     self._set_state(self._playing_state())
@@ -654,7 +654,7 @@ class Jukebox:
             return
 
         if nxt is not None and key is not None and key == self.key(nxt):
-            # Regulärer Übergang zum fixierten nächsten Titel.
+            # Regular transition to the fixed next track.
             self._finish(current, ItemState.PLAYED)
             self._mark_playing(nxt)
             self._changed()
@@ -664,7 +664,7 @@ class Jukebox:
 
         if key is None:
             if status.transport == TransportState.STOPPED and settled:
-                # Sonos-Queue wurde geleert, z. B. durch Auslaufen ohne nächsten Titel.
+                # The Sonos queue was emptied, e.g. by running out without a next track.
                 self._finish(current, ItemState.PLAYED)
                 if nxt is not None:
                     self._unset_next(nxt)
@@ -672,11 +672,11 @@ class Jukebox:
                     self._set_state(self._playing_state())
                 else:
                     self._set_state(JukeboxState.IDLE)
-            # Sonst: Übergang abwarten.
+            # Otherwise: wait for the transition.
             return
 
-        # Etwas anderes läuft: externer Eingriff über die Sonos-App.
-        _LOG.info("Externer Eingriff erkannt (%s)", key)
+        # Something else is playing: someone used the Sonos app.
+        _LOG.info("External change detected (%s)", key)
         self.override_info = f"{status.artist} – {status.title}".strip(" –")
         self._audit("sonos", "manual_override", self.override_info)
         self._set_state(JukeboxState.MANUAL_OVERRIDE)
@@ -687,7 +687,7 @@ class Jukebox:
             return JukeboxState.PLAYING_FALLBACK
         return JukeboxState.PLAYING_GUEST
 
-    # ------------------------------------------------------------------ Ansichten
+    # ------------------------------------------------------------------ views
 
     def _track_view(self, track: Track, covers: bool) -> dict[str, Any]:
         view: dict[str, Any] = {"title": track.title, "artist": track.artist}
@@ -698,7 +698,7 @@ class Jukebox:
         return view
 
     def guest_view(self, guest: Guest | None) -> dict[str, Any]:
-        """Kompakter Zustand für die Gast-Seite (Ziel < 10 KB)."""
+        """Compact state for the guest page (target < 10 KB)."""
         covers = self.settings.guest_access.show_covers
         view: dict[str, Any] = {
             "version": self.notifier.version,

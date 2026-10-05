@@ -1,4 +1,4 @@
-"""Regeln für Votes und Vorschläge (Plan 5.3)."""
+"""Rules for votes and suggestions (plan 5.3)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .settings import LimitSettings
 
 
 class RuleViolation(Exception):
-    """Eine Gast-Aktion verstößt gegen eine Regel. `code` geht an die Gast-Seite."""
+    """A guest action breaks a rule. `code` is sent to the guest page."""
 
     def __init__(self, code: str, retry_after: float | None = None) -> None:
         super().__init__(code)
@@ -22,19 +22,19 @@ class RuleViolation(Exception):
 @dataclass(frozen=True, slots=True)
 class BudgetState:
     remaining: int
-    # Sekunden, bis wieder ein Vote/Vorschlag frei wird (None = nichts verbraucht)
+    # seconds until a vote/suggestion becomes available again (None = nothing used)
     next_free_in: float | None
 
 
 def sliding_budget(
     events: Iterable[datetime], limit: int, window: timedelta, now: datetime
 ) -> BudgetState:
-    """Gleitendes Fenster: zählt Ereignisse in (now - window, now]."""
+    """Sliding window: counts events in (now - window, now]."""
     recent = sorted(e for e in events if e > now - window)
     remaining = max(0, limit - len(recent))
     next_free_in: float | None = None
     if recent:
-        # Ein Slot wird frei, sobald das älteste Ereignis aus dem Fenster fällt.
+        # A slot frees up as soon as the oldest event leaves the window.
         next_free_in = max(0.0, (recent[0] + window - now).total_seconds())
     return BudgetState(remaining=remaining, next_free_in=next_free_in)
 
@@ -62,7 +62,7 @@ def check_track(
     history: Sequence[PlayedEntry],
     now: datetime,
 ) -> None:
-    """Prüft inhaltliche Regeln für einen Vorschlag; wirft `RuleViolation`."""
+    """Check the content rules for a suggestion; raises `RuleViolation`."""
     if track.duration is not None and track.duration > limits.max_track_seconds:
         raise RuleViolation("too_long")
     if limits.explicit_filter and track.explicit is True:

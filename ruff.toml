@@ -1,5 +1,5 @@
-# Integration (custom_components/), deren Tests (tests/) und Skripte.
-# Das Backend hat eigene Einstellungen in sobo/backend/pyproject.toml.
+# Integration (custom_components/), its tests (tests/) and scripts.
+# The backend has its own settings in sobo/backend/pyproject.toml.
 line-length = 100
 target-version = "py313"
 

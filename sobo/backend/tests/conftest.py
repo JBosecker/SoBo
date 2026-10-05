@@ -59,7 +59,7 @@ async def jukebox(
 _counter = 0
 
 
-def make_guest(jb: Jukebox, nickname: str = "Gast") -> Guest:
+def make_guest(jb: Jukebox, nickname: str = "Guest") -> Guest:
     global _counter
     _counter += 1
     return jb.join(nickname, f"hash-{_counter}", None)
@@ -69,8 +69,8 @@ async def suggest_title(jb: Jukebox, guest: Guest, title: str):  # type: ignore[
     hits = await jb.search(guest, title)
     hit = next(h for h in hits if h.track.title == title)
     item = await jb.suggest(guest, hit.opaque_id)
-    # Realistischer Abstand zwischen Vorschlägen; sonst entscheidet bei
-    # Gleichstand die zufällige ID über die Reihenfolge.
+    # Realistic gap between suggestions; otherwise the random ID decides the order
+    # on a tie.
     if isinstance(jb.clock, ManualClock):
         jb.clock.advance(1)
     return item

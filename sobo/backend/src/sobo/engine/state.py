@@ -1,4 +1,4 @@
-"""Jukebox-Zustände und globales Änderungssignal (Plan 4.2, 5.4)."""
+"""Jukebox states and the global change signal (plan 4.2, 5.4)."""
 
 from __future__ import annotations
 
@@ -17,11 +17,11 @@ class JukeboxState(StrEnum):
 
 
 class ChangeNotifier:
-    """Versionszähler + Weckruf für Long-Poll-Anfragen.
+    """Version counter + wake-up for long-poll requests.
 
-    Jede relevante Änderung ruft `bump()` auf. Wartende werden über ein Event
-    geweckt, das bei jedem Bump ersetzt wird; so braucht `bump()` keinen Lock
-    und ist auch aus synchronem Code innerhalb der Event-Loop aufrufbar.
+    Every relevant change calls `bump()`. Waiters are woken through an event that
+    is replaced on every bump, so `bump()` needs no lock and can also be called
+    from synchronous code inside the event loop.
     """
 
     def __init__(self) -> None:
@@ -39,9 +39,9 @@ class ChangeNotifier:
         return self._version
 
     async def wait(self, since: int, timeout: float, cancel: asyncio.Event | None = None) -> bool:
-        """Wartet, bis die Version neuer als `since` ist.
+        """Wait until the version is newer than `since`.
 
-        Gibt True zurück bei Änderung, False bei Timeout oder Abbruch über `cancel`.
+        Returns True on a change, False on timeout or cancellation via `cancel`.
         """
         while True:
             if self._version > since:
@@ -63,4 +63,4 @@ class ChangeNotifier:
                 return self._version > since
             if cancel is not None and cancel.is_set():
                 return self._version > since
-            # Event wurde durch bump() gesetzt → nächste Runde liefert True.
+            # The event was set by bump() → the next round returns True.

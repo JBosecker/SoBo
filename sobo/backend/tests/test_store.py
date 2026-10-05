@@ -1,4 +1,4 @@
-"""SQLite-Store: Migration, Roundtrip, Neustart der Engine (Plan 7)."""
+"""SQLite store: migration, round trip, engine restart (plan 7)."""
 
 from __future__ import annotations
 

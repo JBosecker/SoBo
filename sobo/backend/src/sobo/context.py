@@ -1,4 +1,4 @@
-"""Verdrahtung aller Bausteine; geteilt von Admin- und interner App."""
+"""Wiring of all building blocks; shared by the admin app and the internal app."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ INTEGRATION_TIMEOUT = timedelta(seconds=60)
 
 @dataclass
 class GuestAccessInfo:
-    """Von der Integration gemeldeter Stand des Gastzugangs (Plan 3.3)."""
+    """Guest access state as reported by the integration (plan 3.3)."""
 
     url: str | None = None
     local_url: str | None = None
@@ -42,8 +42,8 @@ class AppContext:
     scheduler: Scheduler
     secret: str
     guest_access: GuestAccessInfo = field(default_factory=GuestAccessInfo)
-    # Zähler statt Rückkanal: Die Integration fragt /internal/status regelmäßig ab
-    # und rotiert, sobald der Zähler steigt.
+    # A counter instead of a callback: the integration polls /internal/status and
+    # rotates as soon as the counter increases.
     rotation_requested: int = 0
     rotation_done: int = 0
     last_integration_contact: datetime | None = None
@@ -61,7 +61,7 @@ class AppContext:
             if options.fake_sonos:
                 from .sonos.fake_adapter import FakeSonosAdapter
 
-                _LOG.warning("Sonos-Simulation aktiv (fake_sonos)")
+                _LOG.warning("Sonos simulation active (fake_sonos)")
                 adapter = FakeSonosAdapter(ScaledClock(options.fake_speed, clock))
             else:
                 from .sonos.soco_adapter import SoCoAdapter

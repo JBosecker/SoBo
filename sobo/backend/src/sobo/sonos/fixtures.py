@@ -1,4 +1,4 @@
-"""Erfundener Apple-Music-artiger Katalog für den Fake-Adapter (Plan 9)."""
+"""Made-up, Apple-Music-like catalogue for the fake adapter (plan 9)."""
 
 from __future__ import annotations
 

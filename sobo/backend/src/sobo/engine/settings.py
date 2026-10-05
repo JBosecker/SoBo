@@ -1,4 +1,4 @@
-"""Jukebox-Einstellungen, die der Admin über die Ingress-UI pflegt (Plan 4.3)."""
+"""Jukebox settings maintained by the admin in the ingress UI (plan 4.3)."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ class ScheduleSettings(_Model):
             return True
         if self.start <= self.end:
             return self.start <= moment < self.end
-        # Zeitfenster über Mitternacht
+        # time window across midnight
         return moment >= self.start or moment < self.end
 
 
@@ -83,5 +83,5 @@ class JukeboxSettings(_Model):
     votes: VoteSettings = Field(default_factory=VoteSettings)
     limits: LimitSettings = Field(default_factory=LimitSettings)
     guest_access: GuestAccessSettings = Field(default_factory=GuestAccessSettings)
-    # Zeitzone für das Zeitfenster; HA übergibt sie über die App-Optionen.
+    # time zone for the schedule window
     timezone: str = "Europe/Berlin"

@@ -1,8 +1,8 @@
-"""Schnittstelle zwischen Jukebox-Engine und Sonos (Plan 1, 4.2, Phase 1).
+"""Interface between the jukebox engine and Sonos (plan 1, 4.2, phase 1).
 
-Die Engine kennt nur dieses Protokoll. Alle Methoden sind synchron und werden
-ausschließlich vom `SonosWorker` (ein dedizierter Thread) aufgerufen – mit
-Ausnahme von `track_key`, das rein rechnerisch ist.
+The engine only knows this protocol. All methods are synchronous and are called
+exclusively by the `SonosWorker` (a dedicated thread) – except `track_key`, which
+is a pure computation.
 """
 
 from __future__ import annotations
@@ -14,15 +14,15 @@ from urllib.parse import unquote
 
 
 class SonosError(Exception):
-    """Fehler bei der Kommunikation mit Sonos oder dem Musikdienst."""
+    """Error while talking to Sonos or the music service."""
 
 
 class SonosTimeout(SonosError):
-    """Ein Sonos-Aufruf hat das Zeitlimit überschritten."""
+    """A Sonos call exceeded its time limit."""
 
 
 class TrackUnavailable(SonosError):
-    """Der Titel lässt sich nicht (mehr) abspielen."""
+    """The track cannot be played (any more)."""
 
 
 class TransportState(StrEnum):
@@ -35,12 +35,12 @@ class TransportState(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class Track:
-    """Ein abspielbarer Titel.
+    """A playable track.
 
-    `item_id` ist die ID beim Musikdienst (z. B. ``song:1844932150``). URI und
-    DIDL-Metadaten werden für Musikdienst-Titel erst beim Einreihen aufgelöst,
-    weil sie signierte, ablaufende URLs enthalten können (Plan 5.1). Nur Titel
-    aus Sonos-Playlists bringen eine fertige `uri` (+ `meta`) mit.
+    `item_id` is the music service ID (e.g. ``song:1844932150``). For music service
+    tracks, URI and DIDL metadata are resolved only when enqueuing because they may
+    contain signed, expiring URLs (plan 5.1). Only tracks from Sonos playlists come
+    with a ready-made `uri` (+ `meta`).
     """
 
     item_id: str
@@ -99,7 +99,7 @@ class SonosAdapter(Protocol):
     def discover(self) -> list[SpeakerInfo]: ...
 
     def configure(self, config: SpeakerConfig) -> None:
-        """Koordinator festlegen und Gruppenmitglieder dazuholen."""
+        """Set the coordinator and join the group members."""
         ...
 
     def get_accounts(self) -> list[MusicAccount]: ...
@@ -109,19 +109,19 @@ class SonosAdapter(Protocol):
     def get_status(self) -> PlaybackStatus: ...
 
     def play_now(self, track: Track) -> None:
-        """Sonos-Queue leeren, Titel einreihen und sofort abspielen."""
+        """Clear the Sonos queue, enqueue the track and play it right away."""
         ...
 
     def set_next(self, track: Track) -> None:
-        """Alles hinter dem aktuellen Titel entfernen und `track` anhängen.
+        """Remove everything after the current track and append `track`.
 
-        Ergebnis: Sonos-Queue = [aktuell, track]. Bewusst *nicht* über
-        ``as_next=True``, das bei Sonos nur im Shuffle-Modus wirkt.
+        Result: Sonos queue = [current, track]. Deliberately *not* via
+        ``as_next=True``, which Sonos only honours in shuffle mode.
         """
         ...
 
     def clear_next(self) -> None:
-        """Alles hinter dem aktuellen Titel entfernen."""
+        """Remove everything after the current track."""
         ...
 
     def skip(self) -> None: ...
@@ -137,8 +137,8 @@ class SonosAdapter(Protocol):
     def fallback_tracks(self, source_id: str) -> list[Track]: ...
 
     def track_key(self, track: Track) -> str:
-        """Stabiler Schlüssel, um den laufenden Titel (`PlaybackStatus.current_key`)
-        einem Track zuzuordnen."""
+        """Stable key to match the playing track (`PlaybackStatus.current_key`)
+        to a track."""
         ...
 
 
@@ -146,11 +146,11 @@ _KNOWN_EXTENSIONS = (".mp4", ".mp3", ".flac", ".wma", ".ogg", ".m4a", ".aac")
 
 
 def uri_key(uri: str) -> str:
-    """Leitet aus einer Sonos-URI einen vergleichbaren Schlüssel ab.
+    """Derive a comparable key from a Sonos URI.
 
     ``x-sonos-http:song%3a123.mp4?sid=204&flags=8224&sn=3`` → ``song:123``.
-    Für Sonos-Playlist-Titel wird dieselbe Funktion auf beide Seiten angewandt,
-    der Schlüssel ist dann die normalisierte URI ohne Query.
+    For Sonos playlist tracks the same function is applied on both sides; the key
+    is then the normalised URI without its query.
     """
     body = uri.split(":", 1)[1] if ":" in uri else uri
     body = body.split("?", 1)[0]

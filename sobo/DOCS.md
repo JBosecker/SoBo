@@ -1,35 +1,37 @@
 # SoBo
 
-SoBo macht dein Sonos-System zur Party-Jukebox.
+SoBo turns your Sonos system into a party jukebox.
 
-## Einrichtung
+The admin UI and the guest page are available in English and German; they follow
+the language of the browser or phone.
 
-1. App installieren und starten.
-2. Die SoBo-Integration über HACS installieren (für den Gastzugang per QR-Code).
-3. In der Seitenleiste **SoBo** öffnen, Lautsprecher, Apple-Music-Konto und
-   Basis-Playlist wählen und die Jukebox einschalten.
+## Setup
 
-## Bedienung
+1. Install and start the app.
+2. Install the SoBo integration via HACS (for guest access via QR code).
+3. Open **SoBo** in the sidebar, choose the speaker, the Apple Music account and a
+   base playlist, then turn the jukebox on.
 
-- **Live:** Was läuft, was als Nächstes kommt, die Warteschlange mit Stimmen und die
-  Gäste. Songs lassen sich anpinnen oder entfernen, Gäste sperren, die Warteschlange
-  anhalten. Wird in der Sonos-App etwas anderes gestartet, wartet SoBo, bis du
-  „Wieder übernehmen“ wählst.
-- **Gastzugang:** QR-Code zum Aushängen (über „QR-Code drucken“ als A4-Blatt oder PDF),
-  Link kopieren, Gastzugang erneuern. Nach dem Erneuern funktionieren alte QR-Codes nicht mehr.
-- **Einstellungen:** Lautsprecher und Höchstlautstärke, Apple-Music-Konto,
-  Basis-Playlist, Stimmen, Regeln für Wünsche, Zeitfenster.
-- **Protokoll:** Wer hat wann was geändert.
+## Usage
 
-## Optionen
+- **Live:** what is playing, what comes next, the queue with votes and the guests.
+  Songs can be pinned or removed, guests blocked and the queue frozen. If something
+  else is started in the Sonos app, SoBo waits until you choose "Take over again".
+- **Guest access:** a QR code to put up (use "Print QR code" for an A4 sheet or a PDF),
+  copy the link, renew guest access. After renewing, old QR codes stop working.
+- **Settings:** speaker and maximum volume, Apple Music account, base playlist,
+  votes, rules for requests, time window.
+- **Log:** who changed what and when.
 
-| Option | Bedeutung |
+## Options
+
+| Option | Meaning |
 |---|---|
-| `log_level` | Ausführlichkeit der Protokollierung |
-| `fake_sonos` | Nur für Entwicklung: simulierter Lautsprecher statt echter Geräte |
+| `log_level` | How verbose the log output is |
+| `fake_sonos` | Development only: a simulated speaker instead of real devices |
 
-## Sicherheit
+## Security
 
-Die Admin-Oberfläche ist nur über Home Assistant (Ingress) erreichbar. Gäste
-erreichen ausschließlich die Jukebox-Funktionen über eine Nabu-Casa-Cloudhook-URL,
-die keine Rückschlüsse auf deine Home-Assistant-Adresse zulässt.
+The admin UI is only reachable through Home Assistant (ingress). Guests can only
+reach the jukebox functions through a Nabu Casa cloudhook URL that reveals nothing
+about your Home Assistant address.

@@ -1,7 +1,7 @@
-"""Interne API für die HA-Integration (Plan 3.3).
+"""Internal API for the HA integration (plan 3.3).
 
-Nur an 127.0.0.1 gebunden und zusätzlich per `X-SoBo-Secret` geschützt;
-ohne gültiges Secret antwortet jede Route mit 404.
+Bound to 127.0.0.1 only and additionally protected by `X-SoBo-Secret`; without a
+valid secret every route answers 404.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from ..security.secrets import constant_time_equals
 from ..sonos.adapter import SonosError
 from .guest_service import MAX_BODY_BYTES
 
-SECRET_HEADER = "X-SoBo-Secret"  # noqa: S105 – Header-Name, kein Secret
+SECRET_HEADER = "X-SoBo-Secret"  # noqa: S105 – header name, not a secret
 
 
 class _Body(BaseModel):
@@ -52,7 +52,7 @@ router = APIRouter(prefix="/internal")
 
 @router.post("/guest")
 async def guest_action(request: Request, ctx: Ctx) -> JSONResponse:
-    """Weitergeleitete Gast-Aktion (POST-Body vom Cloudhook, unverändert)."""
+    """Forwarded guest action (POST body from the cloudhook, unchanged)."""
     body = b""
     async for chunk in request.stream():
         body += chunk
@@ -78,7 +78,7 @@ async def status(ctx: Ctx) -> dict[str, Any]:
         "active_guests": jb.active_guest_count(),
         "rotation_requested": ctx.rotation_requested,
         "rotation_done": ctx.rotation_done,
-        # Nach einem App-Neustart ist die URL unbekannt → Integration meldet sie erneut.
+        # After an app restart the URL is unknown → the integration reports it again.
         "guest_access_reported": ctx.guest_access.reported_at is not None,
         "long_poll_timeout": jb.settings.guest_access.long_poll_timeout,
         "unregister_when_inactive": jb.settings.guest_access.unregister_when_inactive,
@@ -94,7 +94,7 @@ async def report_guest_access(body: GuestAccessReport, ctx: Ctx) -> None:
 
 @router.post("/rotated", status_code=204)
 async def rotated(body: RotatedReport, ctx: Ctx) -> None:
-    """Integration hat Webhook/Cloudhook erneuert → alle Gast-Sessions verwerfen."""
+    """The integration renewed webhook/cloudhook → discard all guest sessions."""
     await report_guest_access(body, ctx)
     ctx.rotation_done = max(ctx.rotation_done, body.generation)
     ctx.guest_service.reset()

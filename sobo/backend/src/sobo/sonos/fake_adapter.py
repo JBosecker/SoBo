@@ -1,8 +1,8 @@
-"""In-Memory-Sonos für Tests und den Devcontainer (Plan 9, Phase 1).
+"""In-memory Sonos for tests and development (plan 9, phase 1).
 
-Simuliert einen Koordinator mit Queue, Transport-Zustand und Wiedergabezeit.
-Die Zeit kommt aus einer injizierten Uhr; mit `ManualClock` steuern Tests sie
-exakt, mit `ScaledClock` läuft sie im Devcontainer beschleunigt.
+Simulates a coordinator with a queue, transport state and playback time. Time
+comes from an injected clock: tests control it exactly with `ManualClock`, in
+development `ScaledClock` makes it run faster.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ class FakeSonosAdapter:
         self.configured: SpeakerConfig | None = None
         self._lock = threading.Lock()
         self.playlists: dict[str, tuple[str, list[Track]]] = {
-            "fake_playlist:party": ("Party-Basis", self.catalog[:12]),
+            "fake_playlist:party": ("Party Basics", self.catalog[:12]),
             "fake_playlist:chill": ("Chill", self.catalog[20:28]),
         }
 
@@ -53,7 +53,7 @@ class FakeSonosAdapter:
     def _record(self, name: str) -> None:
         self.calls.append(name)
         if name in self.fail_calls:
-            raise SonosError(f"simulierter Fehler in {name}")
+            raise SonosError(f"simulated failure in {name}")
 
     def _position(self) -> float:
         if self.transport == TransportState.PLAYING:
@@ -62,7 +62,7 @@ class FakeSonosAdapter:
         return self._elapsed_before_pause
 
     def _advance(self) -> None:
-        """Simulation bis zur aktuellen Uhrzeit vorspulen."""
+        """Fast-forward the simulation to the current time."""
         while self.transport == TransportState.PLAYING and self.queue:
             current = self.queue[self.index]
             duration = float(current.duration or _DEFAULT_DURATION)
@@ -73,7 +73,7 @@ class FakeSonosAdapter:
             if self.index + 1 < len(self.queue):
                 self.index += 1
                 self._elapsed_before_pause = 0.0
-                # Der nächste Titel startete genau am Ende des vorherigen.
+                # The next track started exactly when the previous one ended.
                 self._started_at = self._clock.now() - timedelta(seconds=overflow)
             else:
                 self.transport = TransportState.STOPPED
@@ -86,7 +86,7 @@ class FakeSonosAdapter:
 
     def _check_available(self, track: Track) -> None:
         if track.item_id in self.unavailable_ids:
-            raise TrackUnavailable(f"{track.item_id} nicht verfügbar")
+            raise TrackUnavailable(f"{track.item_id} is unavailable")
 
     @property
     def current(self) -> Track | None:
@@ -95,7 +95,7 @@ class FakeSonosAdapter:
             return self.queue[self.index] if self.queue else None
 
     def external_play(self, track: Track) -> None:
-        """Simuliert einen Eingriff über die Sonos-App."""
+        """Simulate someone starting something in the Sonos app."""
         with self._lock:
             self.queue = [track]
             self.index = 0
@@ -107,10 +107,10 @@ class FakeSonosAdapter:
         self._record("discover")
         return [
             SpeakerInfo(
-                "RINCON_FAKE_LIVING", "Wohnzimmer", "192.0.2.10", True, ("RINCON_FAKE_LIVING",)
+                "RINCON_FAKE_LIVING", "Living Room", "192.0.2.10", True, ("RINCON_FAKE_LIVING",)
             ),
             SpeakerInfo(
-                "RINCON_FAKE_KITCHEN", "Küche", "192.0.2.11", True, ("RINCON_FAKE_KITCHEN",)
+                "RINCON_FAKE_KITCHEN", "Kitchen", "192.0.2.11", True, ("RINCON_FAKE_KITCHEN",)
             ),
         ]
 
@@ -120,7 +120,7 @@ class FakeSonosAdapter:
 
     def get_accounts(self) -> list[MusicAccount]:
         self._record("get_accounts")
-        return [MusicAccount(FAKE_ACCOUNT_ID, "Apple Music", "Fake-Konto")]
+        return [MusicAccount(FAKE_ACCOUNT_ID, "Apple Music", "Demo account")]
 
     def search_tracks(self, account_id: str, term: str, count: int) -> list[Track]:
         self._record("search_tracks")
@@ -206,7 +206,7 @@ class FakeSonosAdapter:
     def fallback_tracks(self, source_id: str) -> list[Track]:
         self._record("fallback_tracks")
         if source_id not in self.playlists:
-            raise SonosError(f"unbekannte Quelle {source_id}")
+            raise SonosError(f"unknown source {source_id}")
         return list(self.playlists[source_id][1])
 
     def track_key(self, track: Track) -> str:

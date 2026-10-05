@@ -1,4 +1,4 @@
-"""Gastzugang: Webhook GET/POST, Relay-Verhalten, Cloudhook und Rotation (Plan 3, 9)."""
+"""Guest access: webhook GET/POST, relay behaviour, cloudhook and rotation (plan 3, 9)."""
 
 from __future__ import annotations
 
@@ -36,11 +36,11 @@ async def test_get_serves_guest_page(
     assert response.status == 200
     assert response.content_type == "text/html"
     html = await response.text()
-    assert "Was soll als Nächstes laufen?" in html
+    assert "What should play next?" in html
     assert "default-src 'none'" in html
     assert response.headers["Referrer-Policy"] == "no-referrer"
     assert response.headers["Cache-Control"] == "no-store"
-    # Keine HA-Interna in der Seite
+    # No HA internals in the page
     for leak in ("homeassistant", "/api/", entry.data[CONF_WEBHOOK_ID]):
         assert leak not in html
 
@@ -52,8 +52,13 @@ async def test_get_when_jukebox_off(
     entry = await setup_sobo(hass)
     http = await hass_client_no_auth()
     html = await (await http.get(path(entry))).text()
-    assert "Die Jukebox ist gerade aus." in html
+    assert "The jukebox is off right now." in html
+    assert '<html lang="en">' in html
     assert "<script" not in html
+    german = await http.get(path(entry), headers={"Accept-Language": "fr;q=0.9, de-DE;q=0.8"})
+    assert "Die Jukebox ist gerade aus." in await german.text()
+    english = await http.get(path(entry), headers={"Accept-Language": "en-US, de;q=0.5"})
+    assert "The jukebox is off right now." in await english.text()
 
 
 async def test_post_is_forwarded(
@@ -68,7 +73,7 @@ async def test_post_is_forwarded(
     assert await response.json() == {"ok": False, "error": "already_voted"}
     sent_body, timeout = client.guest_action.call_args.args
     assert sent_body == body
-    assert timeout == 25  # long_poll_timeout + Puffer
+    assert timeout == 25  # long_poll_timeout + buffer
 
 
 async def test_post_too_large(
@@ -107,7 +112,7 @@ async def test_other_methods_rejected(
 async def test_response_survives_cloud_relay(
     hass: HomeAssistant, client: AsyncMock, method: str, content_type: str
 ) -> None:
-    """Wie der Nabu-Casa-Relay: MockRequest ohne remote, nur Status/Body/Content-Type zurück."""
+    """Like the Nabu Casa relay: MockRequest without remote, only status/body/content type back."""
     entry = await setup_sobo(hass)
     request = MockRequest(
         content=b'{"action":"state","session":"x"}',
@@ -130,12 +135,12 @@ async def test_response_survives_cloud_relay(
 
 
 class CloudNotAvailableError(Exception):
-    """Ersatz für cloud.CloudNotAvailable."""
+    """Stand-in for cloud.CloudNotAvailable."""
 
 
 @pytest.fixture
 def cloud() -> Generator[dict[str, AsyncMock]]:
-    """Nabu Casa verbunden – ersetzt das HA-Modul `cloud` (in Tests nicht importierbar)."""
+    """Nabu Casa connected – replaces the HA `cloud` module (not importable in tests)."""
     fake = SimpleNamespace(
         async_active_subscription=lambda hass: True,
         async_is_logged_in=lambda hass: True,
@@ -187,19 +192,19 @@ async def test_rotation_requested_by_app(
     cloud["delete"].assert_awaited_once_with(hass, old_id)
     generation, url, _local, _connected = client.report_rotated.call_args.args
     assert (generation, url) == (2, CLOUD_URL)
-    # Alter Link liefert keine Seite mehr, der neue schon.
-    assert "Was soll" not in await (await http.get(f"/api/webhook/{old_id}")).text()
-    assert "Was soll" in await (await http.get(f"/api/webhook/{new_id}")).text()
+    # The old link no longer serves a page, the new one does.
+    assert "What should play next?" not in await (await http.get(f"/api/webhook/{old_id}")).text()
+    assert "What should play next?" in await (await http.get(f"/api/webhook/{new_id}")).text()
 
-    # App meldet weiter „ausstehend“ (Bestätigung verloren): nicht erneut rotieren,
-    # sonst würden QR-Code und Sitzungen alle 5 s ungültig – nur nochmal bestätigen.
+    # The app still reports "pending" (confirmation lost): do not rotate again, otherwise
+    # the QR code and sessions would become invalid every 5 s – only confirm again.
     await entry.runtime_data.coordinator.async_refresh()
     assert entry.data[CONF_WEBHOOK_ID] == new_id
     cloud["delete"].assert_awaited_once()
     assert client.report_rotated.await_count == 2
     assert client.report_rotated.call_args.args[0] == 2
 
-    # Neue Anforderung → neue Rotation
+    # New request → new rotation
     client.status.return_value = {**STATUS, "rotation_requested": 3, "rotation_done": 2}
     await entry.runtime_data.coordinator.async_refresh()
     assert entry.data[CONF_WEBHOOK_ID] != new_id
@@ -227,7 +232,7 @@ async def test_unregister_when_inactive(
     assert "Jukebox" not in await (await http.get(path(entry))).text()
     client.status.return_value = dict(STATUS)
     await entry.runtime_data.coordinator.async_refresh()
-    assert "Was soll" in await (await http.get(path(entry))).text()
+    assert "What should play next?" in await (await http.get(path(entry))).text()
 
 
 async def test_unload_keeps_cloudhook_remove_deletes_it(

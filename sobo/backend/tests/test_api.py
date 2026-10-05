@@ -1,4 +1,4 @@
-"""HTTP-Schicht: Ingress-Guard, Secret-Guard, Admin- und interne Routen (Plan 9)."""
+"""HTTP layer: ingress guard, secret guard, admin and internal routes (plan 9)."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ async def test_admin_index_via_ingress(ctx: AppContext) -> None:
         response = await client.get("/")
         assert response.status_code == 200
         assert "<title>SoBo</title>" in response.text
-        assert 'src="assets/admin.js"' in response.text  # relativ wegen Ingress-Präfix
+        assert 'src="assets/admin.js"' in response.text  # relative because of the ingress prefix
         csp = response.headers["content-security-policy"]
         assert "script-src 'self'" in csp and "frame-ancestors 'self'" in csp
         assert "unsafe-inline" not in csp
@@ -99,7 +99,7 @@ async def test_sonos_lists_need_speaker(ctx: AppContext) -> None:
     async with admin_client(ctx) as client:
         response = await client.get("/api/sonos/accounts")
         assert (response.status_code, response.json()) == (409, {"error": "no_speaker"})
-    # Die Abfrage selbst darf keinen Störungszustand hinterlassen
+    # The query itself must not leave an error state behind
     assert ctx.jukebox.last_error is None
 
 
@@ -162,7 +162,7 @@ async def test_admin_sonos_lists(ctx: AppContext) -> None:
         speakers = (await client.get("/api/sonos/speakers")).json()
         accounts = (await client.get("/api/sonos/accounts")).json()
         sources = (await client.get("/api/sonos/fallback-sources")).json()
-    assert {s["name"] for s in speakers} == {"Wohnzimmer", "Küche"}
+    assert {s["name"] for s in speakers} == {"Living Room", "Kitchen"}
     assert accounts[0]["service"] == "Apple Music"
     assert sources[0]["source_id"].startswith("fake_playlist:")
 
@@ -179,7 +179,7 @@ async def test_rotation_requires_integration(ctx: AppContext) -> None:
     assert status["guest_access"]["rotation_pending"] is True
 
 
-# --------------------------------------------------------------------------- Intern
+# --------------------------------------------------------------------------- internal
 
 
 async def test_internal_guest_proxy_and_rotation(ctx: AppContext) -> None:

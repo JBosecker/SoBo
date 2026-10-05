@@ -1,4 +1,4 @@
-"""Zeitquelle. Engine und Fake-Adapter bekommen die Uhr injiziert, damit Tests Zeit simulieren."""
+"""Time source. The engine and the fake adapter get the clock injected so tests can fake time."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Protocol
 
 class Clock(Protocol):
     def now(self) -> datetime:
-        """Aktuelle Zeit (UTC, timezone-aware)."""
+        """Current time (UTC, timezone-aware)."""
         ...
 
 
@@ -18,7 +18,7 @@ class SystemClock:
 
 
 class ManualClock:
-    """Uhr für Tests: steht still, bis `advance()` aufgerufen wird."""
+    """Clock for tests: stands still until `advance()` is called."""
 
     def __init__(self, start: datetime | None = None) -> None:
         self._now = start or datetime(2026, 1, 1, 20, 0, tzinfo=UTC)
@@ -31,7 +31,7 @@ class ManualClock:
 
 
 class ScaledClock:
-    """Beschleunigte Uhr für den Fake-Adapter im Devcontainer (z. B. 10x)."""
+    """Accelerated clock for the fake adapter in development (e.g. 10x)."""
 
     def __init__(self, speed: float, base: Clock | None = None) -> None:
         self._base = base or SystemClock()

@@ -1,4 +1,4 @@
-"""Property-Tests (Hypothesis) für Ranking und Vote-Budget (Plan Phase 2)."""
+"""Property tests (Hypothesis) for ranking and the vote budget (plan phase 2)."""
 
 from __future__ import annotations
 
@@ -41,10 +41,10 @@ def _build(specs: list[tuple[int, bool, int]]) -> list[QueueItem]:
 def test_ranking_invariants(specs: list[tuple[int, bool, int]]) -> None:
     order = ranked(_build(specs))
     for a, b in pairwise(order):
-        # Gepinnte immer zuerst
+        # pinned always first
         assert a.pinned or not b.pinned
         if a.pinned == b.pinned:
-            # Innerhalb gleicher Pin-Gruppe: mehr Votes zuerst, bei Gleichstand älter zuerst
+            # Within the same pin group: more votes first, on a tie older first
             assert a.votes >= b.votes
             if a.votes == b.votes:
                 assert a.submitted_at <= b.submitted_at

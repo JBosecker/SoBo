@@ -1,4 +1,4 @@
-"""Ranking nur mit Upvotes (Plan 5.2): pinned DESC, votes DESC, submitted_at ASC."""
+"""Ranking with upvotes only (plan 5.2): pinned DESC, votes DESC, submitted_at ASC."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from .models import QueueItem
 
 
 def rank_key(item: QueueItem) -> tuple[bool, int, datetime, str]:
-    # `id` als letzter Tie-Breaker macht die Reihenfolge vollständig deterministisch.
+    # `id` as the final tie-breaker makes the order fully deterministic.
     return (not item.pinned, -item.votes, item.submitted_at, item.id)
 
 
