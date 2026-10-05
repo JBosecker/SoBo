@@ -8,15 +8,14 @@ Stand: 05.10.2026
 |---|---|---|
 | 0 – Setup | Repo-Struktur, App-Konfiguration (`config.yaml`, `build.yaml`, `Dockerfile`, s6-Dienst), CI (ruff, mypy, pytest, pip-audit, App-Linter, Multi-Arch-Build), Dependabot, Devcontainer, SoCo-Fork auf `97dba03` gepinnt, Statusseite „Hello SoBo“ | ✔ (Docker-Build noch nicht ausgeführt) |
 | 1 – Sonos-Adapter | `SonosAdapter`-Protokoll, `FakeSonosAdapter` (simulierte Zeit), `SoCoAdapter` (Fork), `SonosWorker` (ein Thread, Timeouts), Vertragstests gegen beide Adapter | ✔ |
-| 2 – Engine | Queue, Ranking, Vote-/Vorschlagsbudget (gleitend), Limits (Länge, Explicit, Sperrliste, Sperrzeiten), Basis-Playlist, Zustandsautomat, Lookahead mit Fixierung, `manual_override`, Max-Lautstärke, Versionszähler/Änderungssignal, SQLite-Store + Alembic | ✔ (Store-Tests noch nicht ausgeführt) |
+| 2 – Engine | Queue, Ranking, Vote-/Vorschlagsbudget (gleitend), Limits (Länge, Explicit, Sperrliste, Sperrzeiten), Basis-Playlist, Zustandsautomat, Lookahead mit Fixierung, `manual_override`, Max-Lautstärke, Versionszähler/Änderungssignal, SQLite-Store + Alembic | ✔ |
 | 4 (Teil) – Gast-API | Strikte Aktionsliste, Sessions (gehasht), Rate-Limits (global, Join, Session, Suche), Long Polling inkl. Ersetzen und globaler Obergrenze, Body-Limit | ✔ |
-| 3 (Teil) – Admin-API | Status, Einstellungen, Moderation, Gäste, Audit, Sonos-Listen, Rotation anstoßen; Ingress-Guard | ✔ (Tests noch nicht ausgeführt) |
+| 3 (Teil) – Admin-API | Status, Einstellungen, Moderation, Gäste, Audit, Sonos-Listen, Rotation anstoßen; Ingress-Guard | ✔ |
 
-Testergebnis in der Entwicklungsumgebung: **126 bestanden**, 3 Module übersprungen
-(FastAPI, SQLModel/Alembic und Hypothesis waren dort nicht installierbar).
-`ruff` und `mypy --strict` sind für alle Module ohne diese Pakete sauber.
+Testergebnis (lokal, macOS, Python 3.14): **153 Tests bestanden**, `mypy --strict`
+ohne Befund (37 Dateien), `ruff` sauber. Docker-Build steht noch aus (CI).
 
-**Vor dem nächsten Schritt lokal ausführen:**
+Prüfen:
 
 ```bash
 cd sobo/backend && uv venv && uv pip install -e ".[dev]"
@@ -52,6 +51,7 @@ uv run pytest -p anyio && uv run mypy src && uv run ruff check src tests
 - `build.yaml`: Tag `3.13-alpine3.21` der HA-Base-Images beim ersten CI-Lauf prüfen.
 - AppArmor-Profil folgt in Phase 5 (bis dahin Supervisor-Standardprofil).
 - Discovery-Host `127.0.0.1` setzt voraus, dass HA Core im Host-Netz läuft (HAOS/Supervised: ja).
+- Store speichert Zeitstempel mit UTC-Zeitzone (SQLModel ≥ 0.0.47 verlangt das).
 - Datenbank wächst; Aufbewahrung: Historie und Audit-Log werden nach 30 Tagen gelöscht.
 
 ## Nächste Schritte
