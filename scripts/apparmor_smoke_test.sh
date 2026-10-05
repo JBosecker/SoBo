@@ -35,7 +35,7 @@ docker run -d --name "$NAME" --network host \
   "$IMAGE" >/dev/null
 
 for _ in $(seq 60); do
-  curl -fsS -o /dev/null http://127.0.0.1:8737/ && break
+  curl -fs -o /dev/null http://127.0.0.1:8737/ && break
   sleep 1
 done
 curl -fsS http://127.0.0.1:8737/ | grep -q "<title>SoBo</title>"
@@ -43,7 +43,7 @@ profile="$(docker inspect -f '{{.AppArmorProfile}}' "$NAME")"
 [[ "$profile" == "sobo" ]] || { echo "unexpected AppArmor profile: $profile" >&2; exit 1; }
 sudo cat /proc/"$(docker inspect -f '{{.State.Pid}}' "$NAME")"/attr/current
 # The backend must run in the child profile, not in the outer one.
-backend_pid="$(pgrep -f -n 'python3 -m sobo')"
+backend_pid="$(pgrep -f -n 'python3 -P -m sobo')"
 label="$(sudo cat /proc/"$backend_pid"/attr/current)"
 echo "backend: $label"
 [[ "$label" == "sobo//sobo_python (enforce)" ]] || { echo "backend not in sobo_python" >&2; exit 1; }
@@ -71,7 +71,7 @@ curl -fsS 'http://127.0.0.1:8737/api/audit?limit=5' | jq -e 'length > 0' >/dev/n
 # Restart: the database and secret must survive under the profile.
 docker restart "$NAME" >/dev/null
 for _ in $(seq 60); do
-  curl -fsS -o /dev/null http://127.0.0.1:8737/api/status && break
+  curl -fs -o /dev/null http://127.0.0.1:8737/api/status && break
   sleep 1
 done
 curl -fsS http://127.0.0.1:8737/api/settings | jq -e '.speaker.coordinator_uid == "RINCON_FAKE_LIVING"' >/dev/null

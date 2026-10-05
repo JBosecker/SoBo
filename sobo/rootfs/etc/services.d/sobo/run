@@ -1,4 +1,8 @@
 #!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
 bashio::log.info "Starting SoBo …"
-exec python3 -m sobo
+# s6 starts the service in /run/s6/legacy-services/sobo; work in /data instead and
+# keep the current directory out of sys.path (-P), so Python never reads the service
+# folder (denied by the AppArmor profile) and nothing in /data can shadow a module.
+cd /data
+exec python3 -P -m sobo
