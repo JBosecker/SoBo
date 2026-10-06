@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sobo"
-version = "0.2.2"
+version = "0.2.3"
 description = "SoBo – Sonos jukebox as a Home Assistant app"
 readme = "README.md"
 requires-python = ">=3.13"

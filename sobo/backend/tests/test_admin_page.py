@@ -290,3 +290,21 @@ def test_music_sign_in_banner(browser: Browser, harness: tuple[AdminHarness, str
     expect(page.locator("#banner")).to_contain_text("sign in again", timeout=8000)
     page_de = open_admin(browser, url, locale="de-DE")
     expect(page_de.locator("#banner")).to_contain_text("melde dich neu an", timeout=8000)
+
+
+def test_fixed_next_song_is_marked_in_the_queue(
+    browser: Browser, harness: tuple[AdminHarness, str]
+) -> None:
+    h, url = harness
+    configure(h)
+    guest_wishes(h, "Mia", "comet", "copper")
+    settings = h.ctx.jukebox.settings.model_copy(deep=True)
+    settings.votes.lock_next_seconds = 600  # fix the next song right away
+    h.run(h.ctx.jukebox.update_settings(settings, "test"))
+    page = open_admin(browser, url)
+    nxt = page.locator("#queue li.next")
+    expect(nxt).to_have_count(1, timeout=8000)
+    expect(nxt).to_contain_text("Up next")
+    expect(nxt).to_contain_text("Requested by Mia")
+    expect(page.locator("#next-line")).to_be_hidden()
+    expect(page.locator("#queue li")).to_have_count(2)

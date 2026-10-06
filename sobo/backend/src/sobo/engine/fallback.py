@@ -57,6 +57,13 @@ class FallbackPlaylist:
                 break
         return result
 
+    def take(self, key: str) -> None:
+        """Drop the next planned play of this song (a guest request just played it)."""
+        for index, track in enumerate(self._order):
+            if self._key_fn(track) == key:
+                del self._order[index]
+                return
+
     def next_track(self, exclude_keys: Collection[str] = ()) -> Track | None:
         """Next track that is not in `exclude_keys` (e.g. currently playing)."""
         if not self._tracks:

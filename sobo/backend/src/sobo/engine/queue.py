@@ -8,6 +8,7 @@ from ..sonos.adapter import Track
 from .limits import PlayedEntry
 from .models import ItemState, Origin, QueueItem
 from .ranking import ranked
+from .songs import song_key
 
 
 class JukeboxQueue:
@@ -59,6 +60,17 @@ class JukeboxQueue:
     def open_by_key(self, key: str) -> QueueItem | None:
         for item in self._items.values():
             if item.is_open and self.key(item) == key:
+                return item
+        return None
+
+    def open_same_song(self, track: Track) -> QueueItem | None:
+        """Open item with this track, or with the same song from another source."""
+        found = self.open_by_key(self._key_fn(track))
+        if found is not None:
+            return found
+        song = song_key(track)
+        for item in self._items.values():
+            if item.is_open and song_key(item.track) == song:
                 return item
         return None
 

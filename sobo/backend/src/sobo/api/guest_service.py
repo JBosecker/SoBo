@@ -140,6 +140,9 @@ class GuestService:
             return self._join(action)
         guest = self.jb.guest_for_token(hash_token(action.session))
         if guest is None:
+            if not self.jb.effectively_active:
+                # Switching off ends all sessions: show "off" until the next party starts.
+                return _error(_STATUS["inactive"], "inactive")
             return _error(401, "invalid_session")
         if not self.session_limiter.allow(guest.id):
             return _error(429, "slow_down")

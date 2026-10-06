@@ -113,6 +113,11 @@ class FakeSoCoDevice:
 
     def join(self, master: FakeSoCoDevice) -> None:
         master.joined.append(self.uid)
+        self.group = master.group
+
+    def unjoin(self) -> None:
+        self.unjoined = True
+        self.group = _Group(self)
 
 
 class _Account:
@@ -287,6 +292,15 @@ def test_soco_set_next_keeps_current_and_removes_rest() -> None:
 def test_soco_configure_joins_members() -> None:
     _, device = make_soco_adapter()
     assert device.joined == ["RINCON_2"]
+
+
+def test_soco_release_ungroups_members() -> None:
+    adapter, device = make_soco_adapter()
+    other = next(s for s in adapter._speakers() if s.uid == "RINCON_2")
+    assert other.group.coordinator is device
+    adapter.release(SpeakerConfig("RINCON_1", ("RINCON_2",)))
+    assert other.unjoined
+    assert not getattr(device, "unjoined", False)
 
 
 def test_soco_search_filters_non_https_art() -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import random
 
@@ -459,9 +460,13 @@ async def test_deactivate_stops_playback(
     assert first.state == ItemState.PLAYED
     assert nxt.state == ItemState.QUEUED
     assert len(fake.queue) == 1
-    # Switching on again starts with the next request, not the stopped song.
+    # The group SoBo formed is dissolved and the guest list starts empty again.
+    assert "release" in fake.calls and fake.configured is None
+    assert not jukebox.guests and jukebox.guest_for_token(g.token_hash) is None
+    # Switching on again groups again and starts with the next request.
     await jukebox.set_active(True, "admin")
     await jukebox.tick()
+    assert fake.configured is not None
     assert nxt.state == ItemState.PLAYING
     assert fake.transport == TransportState.PLAYING
 
@@ -718,3 +723,84 @@ async def test_base_playlist_preview_count(jukebox: Jukebox) -> None:
     )
     assert len([e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]) == 3
     assert len(jukebox.admin_view()["fallback_upcoming"]) == 3
+
+
+async def test_late_vote_keeps_the_fixed_base_playlist_song(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
+    await jukebox.tick()
+    await near_end(jukebox, fake, clock)
+    fixed = jukebox.queue.next_item
+    assert fixed is not None and fixed.origin == Origin.FALLBACK
+    status = fake.get_status()
+    assert status.duration is not None and status.position is not None
+    clock.advance(status.duration - status.position - 5)  # 5 s before the end
+    g = make_guest(jukebox)
+    preview = [e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]
+    wish = await jukebox.vote(g, preview[0]["id"])
+    await jukebox.tick()
+    assert jukebox.queue.next_item is fixed  # not swapped this close to the end
+    clock.advance(6)
+    await jukebox.tick()
+    assert fixed.state == ItemState.PLAYING
+    assert wish.state == ItemState.QUEUED
+    await near_end(jukebox, fake, clock)
+    assert jukebox.queue.next_item is wish
+
+
+async def test_stop_at_the_end_with_a_fixed_next_plays_on(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    g = make_guest(jukebox)
+    first = await suggest_title(jukebox, g, "Slow Comet")
+    second = await suggest_title(jukebox, g, "Copper Sky")
+    await jukebox.tick()
+    await near_end(jukebox, fake, clock)
+    assert jukebox.queue.next_item is second
+    # Race seen on a real system: the next track vanished from the Sonos queue just
+    # as the current one ended, so Sonos stopped on the old track.
+    del fake.queue[fake.index + 1 :]
+    clock.advance(60)
+    await jukebox.tick()
+    assert first.state == ItemState.PLAYED
+    assert second.state == ItemState.PLAYING
+    assert fake.transport == TransportState.PLAYING
+
+
+async def test_request_for_a_base_playlist_song_moves_it_up(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    # The library playlist knows the songs under other IDs than the catalog search.
+    library = [
+        dataclasses.replace(t, item_id="librarytrack:" + t.item_id, uri="")
+        for t in fake.catalog[:12]
+    ]
+    fake.playlists["fake_playlist:library"] = ("Library", library)
+    await apply(
+        jukebox, fallback=FallbackSettings(source_id="fake_playlist:library", shuffle=False)
+    )
+    await jukebox.tick()
+    g = make_guest(jukebox)
+    upcoming = [e["title"] for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]
+    wanted = upcoming[4]
+    wish = await suggest_title(jukebox, g, wanted)
+    view = jukebox.guest_view(g)["queue"]
+    assert [e["title"] for e in view].count(wanted) == 1
+    assert view[0]["id"] == wish.id
+    # Asking again counts as a vote for the same request, also from the other source.
+    h = make_guest(jukebox, "H")
+    preview_ids = {e["id"] for e in view if e.get("fallback")}
+    assert all(jukebox._preview[p].title != wanted for p in preview_ids)
+    assert (await suggest_title(jukebox, h, wanted)) is wish
+    # Once the request played, the base playlist does not repeat it in this round.
+    await near_end(jukebox, fake, clock)
+    clock.advance(60)
+    await jukebox.tick()
+    assert wish.state == ItemState.PLAYING
+    await near_end(jukebox, fake, clock)
+    clock.advance(60)
+    await jukebox.tick()
+    assert wish.state == ItemState.PLAYED
+    later = [e["title"] for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]
+    assert wanted not in later[: len(upcoming) - 3]

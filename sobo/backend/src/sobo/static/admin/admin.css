@@ -125,6 +125,10 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 .track.pinned .art { box-shadow: 0 0 0 2px var(--accent); }
 .votes { display: inline-flex; align-items: center; gap: 4px; min-width: 52px; justify-content: center; padding: 3px 10px; border: 1.5px solid var(--accent); border-radius: 999px; font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 .votes .arrow { font-size: 11px; }
+/* Fixed to play next: highlighted first row */
+.track.next { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 8px; margin: 0 -8px 4px; padding: 8px; }
+.track.next + .track::before { display: none; }
+.next-pill { padding: 3px 10px; border-radius: 999px; background: var(--accent); color: #2a1d05; font-weight: 700; font-size: 13px; white-space: nowrap; }
 .row-actions { display: flex; gap: 6px; }
 .row-actions .button { padding: 4px 10px; font-size: 13px; }
 .row-actions .button[aria-pressed] { min-width: 72px; }

@@ -258,6 +258,16 @@ class SoCoAdapter:
         self._browsers.clear()
         self._accounts.clear()
 
+    def release(self, config: SpeakerConfig) -> None:
+        speakers = {s.uid: s for s in self._speakers()}
+        for uid in config.members:
+            member = speakers.get(uid)
+            if member is None or uid == config.coordinator_uid:
+                continue
+            group = member.group
+            if group is not None and group.coordinator.uid == config.coordinator_uid:
+                member.unjoin()
+
     def get_accounts(self) -> list[MusicAccount]:
         accounts = self._accounts_fn(self.coordinator)
         self._accounts = {str(a.serial_number): a for a in accounts}

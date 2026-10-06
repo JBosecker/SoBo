@@ -44,9 +44,14 @@ in der sie laufen werden (standardmäßig alle; **Einstellungen → Musik → So
 Basis-Playlist in der Warteschlange** begrenzt die Anzahl). Gäste können auch für sie
 stimmen; eine Stimme macht den Song zu einem normalen Wunsch.
 
+Wünscht sich jemand einen Song, der schon in der Basis-Playlist ist, rückt dieser nach
+oben (SoBo erkennt gleichen Interpreten und Titel) und erscheint nicht doppelt.
+
 Wird die Jukebox ausgeschaltet (oder endet ihr Zeitfenster), stoppt die Musik; der
 gestoppte Song gilt als gespielt. Musik, die in der Sonos-App gestartet wurde, bleibt
-unberührt.
+unberührt. Die Lautsprecher, die SoBo gruppiert hat, werden wieder getrennt, und die
+Gästeliste wird geleert: Gäste treten bei der nächsten Party neu bei. Wartende Wünsche
+bleiben in der Warteschlange.
 
 ## Sicherheit
 

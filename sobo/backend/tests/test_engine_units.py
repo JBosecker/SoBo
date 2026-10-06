@@ -14,6 +14,7 @@ from sobo.engine.ranking import ranked
 from sobo.engine.search_cache import SearchCache
 from sobo.engine.settings import JukeboxSettings, ScheduleSettings
 from sobo.engine.state import ChangeNotifier
+from sobo.sonos.adapter import Track
 from sobo.sonos.fixtures import fake_catalog
 
 T0 = datetime(2026, 1, 1, 20, 0, tzinfo=UTC)
@@ -178,3 +179,24 @@ def test_item_open_states() -> None:
     ]:
         item.state = state
         assert item.is_open is is_open
+
+
+def test_song_key_matches_the_same_song_from_other_sources() -> None:
+    from sobo.engine.songs import song_key
+
+    def key(title: str, artist: str) -> str:
+        return song_key(Track("x", title, artist))
+
+    assert key("Bohemian Rhapsody - Remastered 2011", "Queen") == key("Bohemian Rhapsody", "Queen")
+    assert key("Señorita (feat. Someone)", "Shawn Mendes & Camila Cabello") == key(
+        "Senorita", "Shawn Mendes"
+    )
+    assert key("Unwritten", "X Ambassadors") != key("Unwritten", "Natasha Bedingfield")
+    assert key("Song", "A") != key("Other Song", "A")
+
+
+def test_fallback_take_skips_the_next_planned_play() -> None:
+    tracks = [Track(f"t{i}", f"T{i}", "A") for i in range(4)]
+    playlist = FallbackPlaylist(tracks, False, lambda t: t.item_id)
+    playlist.take("t2")
+    assert [playlist.next_track().item_id for _ in range(3)] == ["t0", "t1", "t3"]  # type: ignore[union-attr]

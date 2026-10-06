@@ -139,6 +139,9 @@ def test_switching_off_and_on_reaches_waiting_page(
     h.run(h.jukebox.set_active(False, "test"))
     expect(page.locator("#view-off")).to_be_visible(timeout=8000)
     h.run(h.jukebox.set_active(True, "test"))
+    # Switching off empties the guest list: everyone joins the next party again.
+    expect(page.locator("#view-join")).to_be_visible(timeout=8000)
+    join(page, "Mia")
     expect(page.locator("#view-main")).to_be_visible(timeout=8000)
 
 
@@ -253,3 +256,19 @@ def test_page_is_self_contained() -> None:
     assert 'name="referrer" content="no-referrer"' in html
     for forbidden in ("<script src", "<link", "http://", "innerHTML", "@import"):
         assert forbidden not in html, forbidden
+
+
+def test_fixed_next_song_is_marked_in_the_queue(
+    browser: Browser, harness: tuple[Harness, str]
+) -> None:
+    h, url = harness
+    settings = h.jukebox.settings.model_copy(deep=True)
+    settings.votes.lock_next_seconds = 600  # fix the next song right away
+    h.run(h.jukebox.update_settings(settings, "test"))
+    page = open_page(browser, url)
+    join(page, "Mia")
+    nxt = page.locator("#queue-list li.next")
+    expect(nxt).to_have_count(1, timeout=8000)
+    expect(nxt.locator(".next-pill")).to_have_text("Up next")
+    expect(nxt.locator("button")).to_have_count(0)  # no voting any more
+    expect(page.locator("#queue-list li").first).to_have_class("row next")

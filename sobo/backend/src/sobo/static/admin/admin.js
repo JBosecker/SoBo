@@ -63,7 +63,6 @@
       from_fallback: "From the base playlist",
       requested_by: "Requested by {name}",
       voted_from_playlist: "From the base playlist, voted up by guests",
-      next_line: "Up next: {title} by {artist}{origin}",
       next_open: "Up next: chosen by the votes shortly before this song ends",
       requests_one: "{n} request",
       requests_other: "{n} requests",
@@ -72,6 +71,7 @@
       votes_n_one: "{n} vote",
       votes_n_other: "{n} votes",
       fallback_heading: "Then from the base playlist",
+      next_pill: "Up next",
       votes_one: "vote",
       votes_other: "votes",
       pinned: "Pinned",
@@ -250,7 +250,6 @@
       from_fallback: "Aus der Basis-Playlist",
       requested_by: "Wunsch von {name}",
       voted_from_playlist: "Aus der Basis-Playlist, von Gästen hochgestimmt",
-      next_line: "Als Nächstes: {title} von {artist}{origin}",
       next_open: "Als Nächstes: entscheiden die Stimmen kurz vor Ende dieses Songs",
       requests_one: "{n} Wunsch",
       requests_other: "{n} Wünsche",
@@ -259,6 +258,7 @@
       votes_n_one: "{n} Stimme",
       votes_n_other: "{n} Stimmen",
       fallback_heading: "Danach aus der Basis-Playlist",
+      next_pill: "Als Nächstes",
       votes_one: "Stimme",
       votes_other: "Stimmen",
       pinned: "Angepinnt",
@@ -614,17 +614,16 @@
     const playback = status.playback;
     const fraction = playback && playback.duration ? Math.min(1, (playback.position || 0) / playback.duration) : 0;
     $("now-bar").style.width = `${Math.round(fraction * 100)}%`;
-    const next = status.next;
-    $("next-line").textContent = next
-      ? t("next_line", { title: next.title, artist: next.artist, origin: origin(next) ? ` (${origin(next)})` : "" })
-      : t("next_open");
+    // A fixed next song is shown as the first, marked row of the queue.
+    $("next-line").hidden = Boolean(status.next);
+    $("next-line").textContent = t("next_open");
 
     const freeze = $("freeze");
     freeze.setAttribute("aria-pressed", String(status.frozen));
     freeze.textContent = status.frozen ? t("frozen") : t("freeze");
 
-    if (changed("queue", [status.queue, status.fallback_upcoming])) {
-      renderQueue(status.queue, status.fallback_upcoming || []);
+    if (changed("queue", [status.next, status.queue, status.fallback_upcoming])) {
+      renderQueue(status.next, status.queue, status.fallback_upcoming || []);
     }
     if (changed("history", status.history)) {
       $("history-heading").hidden = status.history.length === 0;
@@ -654,10 +653,32 @@
     );
   }
 
-  function renderQueue(queue, upcoming) {
-    $("queue-empty").hidden = queue.length > 0;
+  function removeButton(item) {
+    return el("button", {
+      type: "button",
+      class: "button danger",
+      text: t("remove"),
+      "aria-label": t("remove_label", { title: item.title }),
+      onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/remove`, undefined, t("removed")),
+    });
+  }
+
+  function nextRow(item) {
+    return el(
+      "li",
+      { class: "track next" },
+      cover(item.art),
+      rowText(item.title, item.artist, origin(item)),
+      el("span", { class: "next-pill", text: t("next_pill") }),
+      el("div", { class: "row-actions" }, removeButton(item))
+    );
+  }
+
+  function renderQueue(next, queue, upcoming) {
+    $("queue-empty").hidden = queue.length > 0 || Boolean(next);
     $("queue-count").textContent = queue.length ? tn("requests", queue.length) : "";
     $("queue").replaceChildren(
+      ...(next ? [nextRow(next)] : []),
       ...queue.map((item) =>
         el(
           "li",
@@ -686,13 +707,7 @@
               title: t("pin_help"),
               onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/pin`, { pinned: !item.pinned }),
             }),
-            el("button", {
-              type: "button",
-              class: "button danger",
-              text: t("remove"),
-              "aria-label": t("remove_label", { title: item.title }),
-              onclick: () => act("POST", `api/queue/${encodeURIComponent(item.id)}/remove`, undefined, t("removed")),
-            })
+            removeButton(item)
           )
         )
       )

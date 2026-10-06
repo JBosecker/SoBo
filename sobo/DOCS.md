@@ -36,8 +36,13 @@ will play (all of them by default; **Settings → Music → Base playlist songs 
 queue** limits the number). Guests can vote for them too: a vote turns the song into a
 regular request.
 
+Requesting a song that is already in the base playlist moves it up (SoBo recognises
+the same artist and title), so it does not appear twice.
+
 Turning the jukebox off (or the end of its time window) stops the music; the stopped
-song counts as played. Music started in the Sonos app is left alone.
+song counts as played. Music started in the Sonos app is left alone. The speakers SoBo
+grouped are ungrouped again and the guest list is emptied: guests join again for the
+next party. Waiting requests stay in the queue.
 
 ## Options
 

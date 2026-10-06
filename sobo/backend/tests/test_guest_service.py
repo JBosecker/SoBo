@@ -107,6 +107,20 @@ async def test_invalid_session(service: GuestService) -> None:
     assert (status, body["error"]) == (401, "invalid_session")
 
 
+async def test_switching_off_ends_sessions(service: GuestService, jukebox: Jukebox) -> None:
+    session = await joined(service)
+    await jukebox.tick()
+    await jukebox.set_active(False, "admin")
+    await jukebox.tick()
+    # While off, the old session reports "off" instead of asking to join again …
+    status, body = await call(service, action="state", session=session)
+    assert (status, body["error"]) == (503, "inactive")
+    # … and once the next party starts, the guest joins again.
+    await jukebox.set_active(True, "admin")
+    status, body = await call(service, action="state", session=session)
+    assert (status, body["error"]) == (401, "invalid_session")
+
+
 async def test_rotation_invalidates_sessions(service: GuestService, jukebox: Jukebox) -> None:
     session = await joined(service)
     await jukebox.rotate_sessions("admin")

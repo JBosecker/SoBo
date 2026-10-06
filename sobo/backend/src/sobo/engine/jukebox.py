@@ -37,6 +37,7 @@ from .persistence import Repository
 from .queue import JukeboxQueue
 from .search_cache import SearchCache
 from .settings import JukeboxSettings
+from .songs import song_key
 from .state import ChangeNotifier, JukeboxState
 
 _LOG = logging.getLogger(__name__)
@@ -50,6 +51,8 @@ PREVIEW_PREFIX = "pl."
 MAX_ENQUEUE_ATTEMPTS = 3
 # A STOPPED right after starting is a transition, not the end of the track.
 MIN_PLAY_SECONDS = 5
+# A fixed base playlist track is no longer replaced by a request this close to the end.
+NEXT_SWAP_GUARD_SECONDS = 10
 FALLBACK_RETRY = timedelta(seconds=60)
 
 
@@ -267,7 +270,7 @@ class Jukebox:
         self._set_service_error(None)
         hits = []
         for track in tracks:
-            existing = self.queue.open_by_key(self.adapter.track_key(track))
+            existing = self.queue.open_same_song(track)
             hits.append(
                 SearchHit(
                     opaque_id=self.search_cache.put(track),
@@ -284,7 +287,7 @@ class Jukebox:
             track = self.search_cache.get(opaque_id)
             if track is None:
                 raise RuleViolation("unknown_result")
-            existing = self.queue.open_by_key(self.adapter.track_key(track))
+            existing = self.queue.open_same_song(track)
             if existing is not None:
                 if existing.state == ItemState.QUEUED:
                     self._add_vote(guest, existing)
@@ -340,7 +343,7 @@ class Jukebox:
         track = self._preview.get(preview_id)
         if track is None:
             raise RuleViolation("unknown_item")
-        existing = self.queue.open_by_key(self.key_of(track))
+        existing = self.queue.open_same_song(track)
         if existing is not None:
             if existing.state != ItemState.QUEUED:
                 raise RuleViolation("locked")
@@ -465,10 +468,7 @@ class Jukebox:
 
     async def rotate_sessions(self, actor: str) -> None:
         async with self._lock:
-            self.guests.clear()
-            self._guest_by_token.clear()
-            self.repo.delete_all_guests()
-            self.search_cache.clear()
+            self._reset_guests()
             self._audit(actor, "rotate_guest_access")
             self._changed()
 
@@ -491,6 +491,9 @@ class Jukebox:
         item.state = ItemState.PLAYING
         item.started_at = self._now()
         self._save(item)
+        if item.origin != Origin.FALLBACK and self._fallback is not None:
+            # A request for a playlist song moved it up: it does not play again later.
+            self._fallback.take(song_key(item.track))
 
     async def _ensure_fallback(self) -> None:
         source = self.settings.fallback.source_id
@@ -511,8 +514,9 @@ class Jukebox:
             return
         self.fallback_error = None
         self._fallback_retry_at = None
+        # Keyed by song so a request for a playlist song is recognised as that song.
         self._fallback = FallbackPlaylist(
-            tracks, self.settings.fallback.shuffle, self.adapter.track_key, self._rng
+            tracks, self.settings.fallback.shuffle, song_key, self._rng
         )
         self._fallback_source = source
 
@@ -522,7 +526,8 @@ class Jukebox:
             if self.key(item) not in exclude:
                 return item
         if self._fallback is not None:
-            track = self._fallback.next_track(exclude)
+            songs = {song_key(i.track) for i in self.queue if i.is_open}
+            track = self._fallback.next_track(songs)
             if track is not None:
                 item = QueueItem(new_id(), track, Origin.FALLBACK, self._now())
                 self.queue.add(item)
@@ -587,12 +592,14 @@ class Jukebox:
             return
         nxt = self.queue.next_item
         # Fixed – unless a fallback track is waiting while guest tracks are available.
-        if (
-            nxt is not None
-            and not self._next_dirty
-            and (nxt.origin != Origin.FALLBACK or not self.queue.waiting())
-        ):
-            return
+        if nxt is not None and not self._next_dirty:
+            if nxt.origin != Origin.FALLBACK or not self.queue.waiting():
+                return
+            remaining = self._remaining(current, status)
+            if remaining is not None and remaining < NEXT_SWAP_GUARD_SECONDS:
+                # Too close to the end: Sonos may already be moving on to the fixed
+                # track, and swapping it now can leave the queue empty at the switch.
+                return
         had_next = nxt is not None or self._next_dirty
         if nxt is not None:
             self._unset_next(nxt)
@@ -662,8 +669,24 @@ class Jukebox:
                 await self.worker.call(lambda a: a.clear_next())
             except SonosError as err:
                 _LOG.warning("Could not remove the next track: %s", err)
+        if self._configured is not None:
+            config = self._configured
+            self._configured = None  # group again when switched on
+            try:
+                await self.worker.call(lambda a: a.release(config), timeout=30)
+            except SonosError as err:
+                _LOG.warning("Could not ungroup the speakers: %s", err)
+        # A new party starts with an empty guest list: everyone joins again.
+        self._reset_guests()
         self._changed()
         self._set_state(JukeboxState.INACTIVE)
+
+    def _reset_guests(self) -> None:
+        self.guests.clear()
+        self._guest_by_token.clear()
+        self._votes.clear()
+        self.repo.delete_all_guests()
+        self.search_cache.clear()
 
     def _set_service_error(self, code: str | None) -> None:
         if self.service_error != code:
@@ -736,9 +759,12 @@ class Jukebox:
         )
 
         if key is not None and key == self.key(current):
-            if status.transport == TransportState.STOPPED and nxt is None and settled:
-                # The queue ran out: the last track has finished.
+            if status.transport == TransportState.STOPPED and settled:
+                # The track has finished without Sonos moving on: the queue ran out, or
+                # the next track was replaced just as the current one ended.
                 self._finish(current, ItemState.PLAYED)
+                if nxt is not None:
+                    self._unset_next(nxt)
                 if await self._start_playback():
                     self._set_state(self._playing_state())
                 else:
@@ -810,8 +836,7 @@ class Jukebox:
         if self._fallback is None:
             self._preview = {}
             return []
-        exclude = {self.key(i) for i in (self.queue.playing, self.queue.next_item) if i}
-        exclude |= {self.key(i) for i in self.queue.waiting()}
+        exclude = {song_key(i.track) for i in self.queue if i.is_open}
         preview = [
             (PREVIEW_PREFIX + hashlib.sha256(self.key_of(t).encode()).hexdigest()[:16], t)
             for t in self._fallback.upcoming(self._preview_count(), exclude)
@@ -836,7 +861,13 @@ class Jukebox:
             view["now_playing"] = now_playing
         nxt = self.queue.next_item
         if nxt is not None:
-            view["next"] = self._track_view(nxt.track, covers)
+            next_view = self._track_view(nxt.track, covers)
+            next_view["votes"] = nxt.votes
+            if nxt.origin == Origin.FALLBACK:
+                next_view["fallback"] = True
+            if guest is not None and nxt.submitted_by == guest.id:
+                next_view["mine"] = True
+            view["next"] = next_view
         entries = []
         for item in self.queue.waiting()[:GUEST_QUEUE_LIMIT]:
             entry = self._track_view(item.track, covers)

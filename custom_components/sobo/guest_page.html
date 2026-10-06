@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MlxCYN9kGhPNygQDGqtkYd4W8mEO1Af6I1otxon5Oxs='; style-src 'sha256-3P8bLbRDn4jL4EIUmyl1qOapsK5RThm5ZFtSIN42r/I='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ESswGCxFxgD3vXmSueiRpJcuSzztiJaI4Jo6+ygiqDo='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -91,7 +91,6 @@ input:focus { border-color: var(--amber); outline: none; }
 .now-label { color: var(--amber); font-weight: 600; font-size: 14px; }
 #now-title { font: 700 26px/1.1 var(--condensed); margin-top: 2px; overflow-wrap: anywhere; }
 .now-artist { color: var(--muted); margin-top: 2px; }
-.next-line { margin-top: 10px; font-size: 14px; color: var(--muted); }
 
 /* -------- Search */
 .search { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; padding: 10px 0; background: var(--night); }
@@ -124,13 +123,21 @@ input:focus { border-color: var(--amber); outline: none; }
   font-size: 15px; color: var(--muted); line-height: 1.3;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.tag {
-  display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 4px;
-  font-size: 12px; font-weight: 700; line-height: 18px; vertical-align: 1px;
-  background: var(--amber); color: #2a1d05;
+.row-note {
+  font-size: 13px; font-weight: 600; color: var(--amber); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.row.pinned .tag { background: #e7dcc4; }
+.row.pinned .row-note { color: #e7dcc4; }
 .row.fallback .row-title { color: #e9e3d6; }
+/* Fixed to play next: highlighted, no vote button */
+.row.next {
+  background: #f2b33d1f; border-radius: 10px; margin: 0 -8px 4px; padding-left: 8px; padding-right: 8px;
+}
+.row.next + .row::before { display: none; }
+.next-pill {
+  padding: 6px 12px; border-radius: 999px; background: var(--amber); color: #2a1d05;
+  font-weight: 700; font-size: 13px; white-space: nowrap;
+}
 
 /* Vote: a clear capsule button on the right */
 .vote {
@@ -205,7 +212,6 @@ input:focus { border-color: var(--amber); outline: none; }
         <p class="now-label" data-i18n="now_label">Now playing</p>
         <h1 id="now-title" data-i18n="nothing_yet">Nothing yet</h1>
         <p id="now-artist" class="now-artist"></p>
-        <p id="next-line" class="next-line" hidden></p>
       </div>
     </header>
 
@@ -221,7 +227,7 @@ input:focus { border-color: var(--amber); outline: none; }
     </section>
 
     <section id="queue" aria-label="Queue" data-i18n-attr="aria-label:queue_label">
-      <h2 class="queue-title" data-i18n="queue_title">Requested next</h2>
+      <h2 class="queue-title" data-i18n="queue_title">Queue</h2>
       <p class="vote-hint" data-i18n="vote_hint">Tap ▲ to vote for a song. The most votes play first.</p>
       <p id="me-line" class="me-line"></p>
       <p id="queue-empty" class="quiet" hidden data-i18n="queue_empty">No requests yet. Search for a song above and suggest it.</p>
@@ -265,12 +271,11 @@ input:focus { border-color: var(--amber); outline: none; }
       now_label: "Now playing",
       nothing_yet: "Nothing yet",
       first_song: "Suggest the first song.",
-      next_line: "After that: {title} by {artist}",
       search_label: "Search for a song or artist",
       done: "Done",
       results_label: "Search results",
       queue_label: "Queue",
-      queue_title: "Requested next",
+      queue_title: "Queue",
       queue_empty: "No requests yet. Search for a song above and suggest it.",
       cover_note: "Covers are loaded directly from Apple.",
       minutes: "{m}:{s} min",
@@ -281,6 +286,8 @@ input:focus { border-color: var(--amber); outline: none; }
       vote_label: "Vote for {title}",
       your_request: "Your request",
       pinned: "Pinned by the host",
+      next_pill: "Up next",
+      from_playlist: "From the party playlist",
       vote_hint: "Tap ▲ to vote for a song. The most votes play first.",
       playlist_title: "Then from the party playlist",
       me_one: "{name}, you have {n} vote left.",
@@ -340,12 +347,11 @@ input:focus { border-color: var(--amber); outline: none; }
       now_label: "Läuft gerade",
       nothing_yet: "Noch nichts",
       first_song: "Schlag den ersten Song vor.",
-      next_line: "Danach: {title} von {artist}",
       search_label: "Song oder Interpret suchen",
       done: "Fertig",
       results_label: "Suchergebnisse",
       queue_label: "Warteschlange",
-      queue_title: "Als Nächstes gewünscht",
+      queue_title: "Warteschlange",
       queue_empty: "Noch keine Wünsche. Such oben nach einem Song und schlag ihn vor.",
       cover_note: "Cover werden direkt von Apple geladen.",
       minutes: "{m}:{s} Min.",
@@ -356,6 +362,8 @@ input:focus { border-color: var(--amber); outline: none; }
       vote_label: "Für {title} stimmen",
       your_request: "Dein Wunsch",
       pinned: "Vom Gastgeber angepinnt",
+      next_pill: "Als Nächstes",
+      from_playlist: "Aus der Party-Playlist",
       vote_hint: "Tippe auf ▲, um für einen Song zu stimmen. Die meisten Stimmen laufen zuerst.",
       playlist_title: "Danach aus der Party-Playlist",
       me_one: "{name}, du hast noch {n} Stimme.",
@@ -541,8 +549,8 @@ input:focus { border-color: var(--amber); outline: none; }
     return node;
   }
 
-  /** One row like in Apple Music: cover, title, artist (+ optional tag), action on the right. */
-  function row(track, extraClass, tag) {
+  /** One row like in Apple Music: cover, title, artist, optional note line. */
+  function row(track, extraClass, note) {
     const li = el("li", "row" + (extraClass ? " " + extraClass : ""));
     const art = el("div", "art");
     if (track.art) {
@@ -556,10 +564,8 @@ input:focus { border-color: var(--amber); outline: none; }
     li.append(art);
     const text = el("div", "row-text");
     text.append(el("span", "row-title", track.title));
-    const sub = el("span", "row-sub");
-    if (tag) sub.append(el("span", "tag", tag));
-    sub.append(document.createTextNode(track.artist || ""));
-    text.append(sub);
+    text.append(el("span", "row-sub", track.artist || ""));
+    if (note) text.append(el("span", "row-note", note));
     li.append(text);
     return li;
   }
@@ -593,9 +599,6 @@ input:focus { border-color: var(--amber); outline: none; }
       art.hidden = true;
       art.removeAttribute("src");
     }
-    const next = state.next;
-    $("next-line").hidden = !next;
-    $("next-line").textContent = next ? t("next_line", { title: next.title, artist: next.artist }) : "";
     tickProgress();
   }
 
@@ -628,14 +631,21 @@ input:focus { border-color: var(--amber); outline: none; }
     const items = state.queue || [];
     const requests = items.filter((item) => !item.fallback);
     const playlist = items.filter((item) => item.fallback);
-    $("queue-list").replaceChildren(
-      ...requests.map((item) => {
-        const tag = item.mine ? t("your_request") : item.pinned ? t("pinned") : null;
-        const li = row(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "), tag);
-        li.append(voteButton(item));
-        return li;
-      })
-    );
+    const rows = requests.map((item) => {
+      const note = item.mine ? t("your_request") : item.pinned ? t("pinned") : null;
+      const li = row(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "), note);
+      li.append(voteButton(item));
+      return li;
+    });
+    // The song fixed to play next: first in line, no more voting.
+    const next = state.next;
+    if (next) {
+      const note = next.mine ? t("your_request") : next.fallback ? t("from_playlist") : null;
+      const li = row(next, "next" + (next.mine ? " mine" : ""), note);
+      li.append(el("span", "next-pill", t("next_pill")));
+      rows.unshift(li);
+    }
+    $("queue-list").replaceChildren(...rows);
     // Base playlist: plays once the requests are through. A vote makes it a request.
     $("playlist-list").replaceChildren(
       ...playlist.map((item) => {
@@ -645,7 +655,7 @@ input:focus { border-color: var(--amber); outline: none; }
       })
     );
     $("playlist-title").hidden = playlist.length === 0;
-    $("queue-empty").hidden = requests.length > 0;
+    $("queue-empty").hidden = rows.length > 0;
   }
 
   function renderMe() {

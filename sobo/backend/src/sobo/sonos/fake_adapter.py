@@ -118,6 +118,10 @@ class FakeSonosAdapter:
         self._record("configure")
         self.configured = config
 
+    def release(self, config: SpeakerConfig) -> None:
+        self._record("release")
+        self.configured = None
+
     def get_accounts(self) -> list[MusicAccount]:
         self._record("get_accounts")
         return [MusicAccount(FAKE_ACCOUNT_ID, "Apple Music", "Demo account")]

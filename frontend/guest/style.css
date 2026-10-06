@@ -80,7 +80,6 @@ input:focus { border-color: var(--amber); outline: none; }
 .now-label { color: var(--amber); font-weight: 600; font-size: 14px; }
 #now-title { font: 700 26px/1.1 var(--condensed); margin-top: 2px; overflow-wrap: anywhere; }
 .now-artist { color: var(--muted); margin-top: 2px; }
-.next-line { margin-top: 10px; font-size: 14px; color: var(--muted); }
 
 /* -------- Search */
 .search { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; padding: 10px 0; background: var(--night); }
@@ -113,13 +112,21 @@ input:focus { border-color: var(--amber); outline: none; }
   font-size: 15px; color: var(--muted); line-height: 1.3;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.tag {
-  display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 4px;
-  font-size: 12px; font-weight: 700; line-height: 18px; vertical-align: 1px;
-  background: var(--amber); color: #2a1d05;
+.row-note {
+  font-size: 13px; font-weight: 600; color: var(--amber); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.row.pinned .tag { background: #e7dcc4; }
+.row.pinned .row-note { color: #e7dcc4; }
 .row.fallback .row-title { color: #e9e3d6; }
+/* Fixed to play next: highlighted, no vote button */
+.row.next {
+  background: #f2b33d1f; border-radius: 10px; margin: 0 -8px 4px; padding-left: 8px; padding-right: 8px;
+}
+.row.next + .row::before { display: none; }
+.next-pill {
+  padding: 6px 12px; border-radius: 999px; background: var(--amber); color: #2a1d05;
+  font-weight: 700; font-size: 13px; white-space: nowrap;
+}
 
 /* Vote: a clear capsule button on the right */
 .vote {

@@ -26,12 +26,11 @@
       now_label: "Now playing",
       nothing_yet: "Nothing yet",
       first_song: "Suggest the first song.",
-      next_line: "After that: {title} by {artist}",
       search_label: "Search for a song or artist",
       done: "Done",
       results_label: "Search results",
       queue_label: "Queue",
-      queue_title: "Requested next",
+      queue_title: "Queue",
       queue_empty: "No requests yet. Search for a song above and suggest it.",
       cover_note: "Covers are loaded directly from Apple.",
       minutes: "{m}:{s} min",
@@ -42,6 +41,8 @@
       vote_label: "Vote for {title}",
       your_request: "Your request",
       pinned: "Pinned by the host",
+      next_pill: "Up next",
+      from_playlist: "From the party playlist",
       vote_hint: "Tap ▲ to vote for a song. The most votes play first.",
       playlist_title: "Then from the party playlist",
       me_one: "{name}, you have {n} vote left.",
@@ -101,12 +102,11 @@
       now_label: "Läuft gerade",
       nothing_yet: "Noch nichts",
       first_song: "Schlag den ersten Song vor.",
-      next_line: "Danach: {title} von {artist}",
       search_label: "Song oder Interpret suchen",
       done: "Fertig",
       results_label: "Suchergebnisse",
       queue_label: "Warteschlange",
-      queue_title: "Als Nächstes gewünscht",
+      queue_title: "Warteschlange",
       queue_empty: "Noch keine Wünsche. Such oben nach einem Song und schlag ihn vor.",
       cover_note: "Cover werden direkt von Apple geladen.",
       minutes: "{m}:{s} Min.",
@@ -117,6 +117,8 @@
       vote_label: "Für {title} stimmen",
       your_request: "Dein Wunsch",
       pinned: "Vom Gastgeber angepinnt",
+      next_pill: "Als Nächstes",
+      from_playlist: "Aus der Party-Playlist",
       vote_hint: "Tippe auf ▲, um für einen Song zu stimmen. Die meisten Stimmen laufen zuerst.",
       playlist_title: "Danach aus der Party-Playlist",
       me_one: "{name}, du hast noch {n} Stimme.",
@@ -302,8 +304,8 @@
     return node;
   }
 
-  /** One row like in Apple Music: cover, title, artist (+ optional tag), action on the right. */
-  function row(track, extraClass, tag) {
+  /** One row like in Apple Music: cover, title, artist, optional note line. */
+  function row(track, extraClass, note) {
     const li = el("li", "row" + (extraClass ? " " + extraClass : ""));
     const art = el("div", "art");
     if (track.art) {
@@ -317,10 +319,8 @@
     li.append(art);
     const text = el("div", "row-text");
     text.append(el("span", "row-title", track.title));
-    const sub = el("span", "row-sub");
-    if (tag) sub.append(el("span", "tag", tag));
-    sub.append(document.createTextNode(track.artist || ""));
-    text.append(sub);
+    text.append(el("span", "row-sub", track.artist || ""));
+    if (note) text.append(el("span", "row-note", note));
     li.append(text);
     return li;
   }
@@ -354,9 +354,6 @@
       art.hidden = true;
       art.removeAttribute("src");
     }
-    const next = state.next;
-    $("next-line").hidden = !next;
-    $("next-line").textContent = next ? t("next_line", { title: next.title, artist: next.artist }) : "";
     tickProgress();
   }
 
@@ -389,14 +386,21 @@
     const items = state.queue || [];
     const requests = items.filter((item) => !item.fallback);
     const playlist = items.filter((item) => item.fallback);
-    $("queue-list").replaceChildren(
-      ...requests.map((item) => {
-        const tag = item.mine ? t("your_request") : item.pinned ? t("pinned") : null;
-        const li = row(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "), tag);
-        li.append(voteButton(item));
-        return li;
-      })
-    );
+    const rows = requests.map((item) => {
+      const note = item.mine ? t("your_request") : item.pinned ? t("pinned") : null;
+      const li = row(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "), note);
+      li.append(voteButton(item));
+      return li;
+    });
+    // The song fixed to play next: first in line, no more voting.
+    const next = state.next;
+    if (next) {
+      const note = next.mine ? t("your_request") : next.fallback ? t("from_playlist") : null;
+      const li = row(next, "next" + (next.mine ? " mine" : ""), note);
+      li.append(el("span", "next-pill", t("next_pill")));
+      rows.unshift(li);
+    }
+    $("queue-list").replaceChildren(...rows);
     // Base playlist: plays once the requests are through. A vote makes it a request.
     $("playlist-list").replaceChildren(
       ...playlist.map((item) => {
@@ -406,7 +410,7 @@
       })
     );
     $("playlist-title").hidden = playlist.length === 0;
-    $("queue-empty").hidden = requests.length > 0;
+    $("queue-empty").hidden = rows.length > 0;
   }
 
   function renderMe() {

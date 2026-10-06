@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.3
+
+- Fix: a vote in the last seconds of a song could stop the music, with the voted song
+  stuck as "next". SoBo no longer swaps a fixed base playlist song in the last
+  10 seconds (the vote counts for the song after), and if Sonos stops at the end of a
+  song anyway, SoBo starts the next one itself.
+- Fix: requesting a song that is also in the base playlist showed it twice. SoBo now
+  recognises the same song (same artist and title) even though Apple Music uses other
+  IDs in the library than in the search: the request moves the song up instead, and
+  the base playlist does not play it again later in that round.
+- Switching the jukebox off also dissolves the speaker group SoBo formed and empties
+  the guest list (all guest sessions end; guests join again for the next party).
+  Waiting requests stay in the queue.
+- Guest page: "Your request" and "Pinned by the host" moved to a small line below the
+  artist. The song that is fixed to play next is the first, highlighted row of the queue
+  ("Up next", no voting), instead of a line below the current song.
+- Admin UI: the fixed next song is also the first, highlighted row of the queue.
+
 ## 0.2.2
 
 - The queue shows all songs of the base playlist after the requests, no longer only
