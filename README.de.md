@@ -37,7 +37,8 @@ und für Gäste außerhalb deines WLANs Home Assistant Cloud (Nabu Casa).
 
 Der nächste Song wird erst kurz vor dem Ende des laufenden festgelegt (standardmäßig
 30 Sekunden, **Einstellungen → Stimmen**). Bis dahin können Gäste noch abstimmen und
-den nächsten Song beeinflussen.
+den nächsten Song beeinflussen; danach zählen Stimmen und neue Wünsche für den Song
+danach.
 
 Nach den Wünschen zeigt die Warteschlange die Songs der Basis-Playlist in der Reihenfolge,
 in der sie laufen werden (standardmäßig alle; **Einstellungen → Musik → Songs der

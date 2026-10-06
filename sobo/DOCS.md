@@ -29,7 +29,8 @@ the language of the browser or phone.
 
 The next song is fixed only shortly before the current one ends (30 seconds by default,
 **Settings → Votes**). Until then guests can still vote, and the leading request moves
-up; once fixed, it is handed to Sonos so the transition is seamless.
+up; once fixed, it is handed to Sonos so the transition is seamless. From then on votes
+and new requests count for the song after it.
 
 After the requests, the queue shows the songs of the base playlist in the order they
 will play (all of them by default; **Settings → Music → Base playlist songs shown in the

@@ -58,9 +58,11 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 5. **In-memory search cache** instead of a `search_result_cache` table. After a
    restart guests simply search again. `guest_access` is not a table either; the
    integration reports the URL again on every start.
-6. **Fallback track vs. fixing:** if a base playlist track is queued as next and a
-   guest suggestion arrives, the fallback track is replaced. Guest tracks stay
-   fixed, as planned.
+6. **Fixing the next track:** the next track is fixed only `votes.lock_next_seconds`
+   before the end (since 0.2.0). Once fixed it stays, also a base playlist track: a
+   request arriving later plays after it (since 0.2.3; before, a fixed base playlist
+   track was replaced by a new request). With unknown track length the next track is
+   fixed right away.
 7. **Jukebox off:** playback stops (pause) and the current song counts as played;
    the "next" track is removed from the Sonos queue. Music someone started in the
    Sonos app (manual override) keeps playing. Since 0.2.2; before, the current track
@@ -141,7 +143,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.2.1 | Feedback: show all base playlist songs, not only five | 0.2.2: setting **Base playlist songs shown in the queue** (default 0 = all, at most 500); a large playlist makes every guest update larger (about 250 bytes per song) |
 | 0.2.1 | Feedback: switching the jukebox off should stop the music | 0.2.2: pause on switch-off (not during a manual override); the stopped song counts as played |
 | 0.2.1 | Feedback: unclear where to vote in the queue; rows like Apple Music wanted | 0.2.2: guest rows with cover, title and artist, hairline separators; vote capsule "▲ count" on the right; hint line; requests and base playlist in two sections; the admin queue got the same rows (with Pin/Remove) |
-| 0.2.2 | Bug: a vote ~5 s before the end swapped the fixed base playlist song; the music stopped with the voted song stuck as "next" (race: the next track left the Sonos queue just as the current one ended) | 0.2.3: no swap in the last 10 s (`NEXT_SWAP_GUARD_SECONDS`); a STOPPED transport on the current track ends it even with a fixed next, which is then started directly |
+| 0.2.2 | Bug: a vote ~5 s before the end swapped the fixed base playlist song; the music stopped with the voted song stuck as "next" (race: the next track left the Sonos queue just as the current one ended) | 0.2.3: a fixed next track is never swapped by guests (the lock window is the voting deadline, feedback); a STOPPED transport on the current track ends it even with a fixed next, which is then started directly |
 | 0.2.2 | Bug: a request for a song in the base playlist appeared twice (library and catalog IDs differ) | 0.2.3: songs also matched by a normalised "artist \| title" key (`engine/songs.py`) for duplicates, preview and the base playlist rotation; a played request is taken out of the planned round |
 | 0.2.2 | Feedback: switching off should also ungroup the speakers and reset the guests | 0.2.3: `SonosAdapter.release()` unjoins the configured members; guests, sessions and vote budgets are cleared |
 | 0.2.2 | Feedback: badge position; the fixed next song looked confusing below the current one | 0.2.3: note line below the artist; fixed next song as the highlighted first queue row (guest page and admin UI) |

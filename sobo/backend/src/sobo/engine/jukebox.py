@@ -51,8 +51,6 @@ PREVIEW_PREFIX = "pl."
 MAX_ENQUEUE_ATTEMPTS = 3
 # A STOPPED right after starting is a transition, not the end of the track.
 MIN_PLAY_SECONDS = 5
-# A fixed base playlist track is no longer replaced by a request this close to the end.
-NEXT_SWAP_GUARD_SECONDS = 10
 FALLBACK_RETRY = timedelta(seconds=60)
 
 
@@ -591,15 +589,11 @@ class Jukebox:
         if current is None:
             return
         nxt = self.queue.next_item
-        # Fixed – unless a fallback track is waiting while guest tracks are available.
+        # Fixed means fixed: within the lock window votes and new requests no longer
+        # change the next song, not even a base playlist one (they count for the one
+        # after). Only the admin (remove, settings) can change it.
         if nxt is not None and not self._next_dirty:
-            if nxt.origin != Origin.FALLBACK or not self.queue.waiting():
-                return
-            remaining = self._remaining(current, status)
-            if remaining is not None and remaining < NEXT_SWAP_GUARD_SECONDS:
-                # Too close to the end: Sonos may already be moving on to the fixed
-                # track, and swapping it now can leave the queue empty at the switch.
-                return
+            return
         had_next = nxt is not None or self._next_dirty
         if nxt is not None:
             self._unset_next(nxt)

@@ -3,9 +3,10 @@
 ## 0.2.3
 
 - Fix: a vote in the last seconds of a song could stop the music, with the voted song
-  stuck as "next". SoBo no longer swaps a fixed base playlist song in the last
-  10 seconds (the vote counts for the song after), and if Sonos stops at the end of a
-  song anyway, SoBo starts the next one itself.
+  stuck as "next". Once the next song is fixed (setting **Votes → Fix the next song this
+  many seconds before the end**), votes and new requests no longer change it, not even
+  when it comes from the base playlist; they count for the song after. If Sonos stops
+  at the end of a song anyway, SoBo starts the next one itself.
 - Fix: requesting a song that is also in the base playlist showed it twice. SoBo now
   recognises the same song (same artist and title) even though Apple Music uses other
   IDs in the library than in the search: the request moves the song up instead, and

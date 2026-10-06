@@ -165,7 +165,7 @@ async def test_queue_runs_out_then_new_suggestion_restarts(
     assert fake.get_status().transport == TransportState.PLAYING
 
 
-async def test_guest_track_preempts_fallback_next(
+async def test_fixed_fallback_next_stays_when_a_request_arrives(
     jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
 ) -> None:
     await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
@@ -176,9 +176,25 @@ async def test_guest_track_preempts_fallback_next(
     g = make_guest(jukebox)
     item = await suggest_title(jukebox, g, "Copper Sky")
     await jukebox.tick()
+    # Within the lock window the next song is fixed; the request plays after it.
+    assert jukebox.queue.next_item is fallback_next
+    assert item.state == ItemState.QUEUED
+    clock.advance(60)
+    await jukebox.tick()
+    assert fallback_next.state == ItemState.PLAYING
+    await near_end(jukebox, fake, clock)
     assert jukebox.queue.next_item is item
-    assert fallback_next.state == ItemState.REMOVED
-    assert fake.queue[-1].item_id == item.track.item_id
+
+
+async def test_request_before_the_lock_window_comes_next(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
+    await jukebox.tick()
+    assert jukebox.queue.next_item is None  # still open
+    item = await suggest_title(jukebox, make_guest(jukebox), "Copper Sky")
+    await near_end(jukebox, fake, clock)
+    assert jukebox.queue.next_item is item
 
 
 async def test_unavailable_track_is_skipped(
@@ -723,30 +739,6 @@ async def test_base_playlist_preview_count(jukebox: Jukebox) -> None:
     )
     assert len([e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]) == 3
     assert len(jukebox.admin_view()["fallback_upcoming"]) == 3
-
-
-async def test_late_vote_keeps_the_fixed_base_playlist_song(
-    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
-) -> None:
-    await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
-    await jukebox.tick()
-    await near_end(jukebox, fake, clock)
-    fixed = jukebox.queue.next_item
-    assert fixed is not None and fixed.origin == Origin.FALLBACK
-    status = fake.get_status()
-    assert status.duration is not None and status.position is not None
-    clock.advance(status.duration - status.position - 5)  # 5 s before the end
-    g = make_guest(jukebox)
-    preview = [e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]
-    wish = await jukebox.vote(g, preview[0]["id"])
-    await jukebox.tick()
-    assert jukebox.queue.next_item is fixed  # not swapped this close to the end
-    clock.advance(6)
-    await jukebox.tick()
-    assert fixed.state == ItemState.PLAYING
-    assert wish.state == ItemState.QUEUED
-    await near_end(jukebox, fake, clock)
-    assert jukebox.queue.next_item is wish
 
 
 async def test_stop_at_the_end_with_a_fixed_next_plays_on(
