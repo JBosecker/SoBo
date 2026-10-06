@@ -11,6 +11,9 @@
 - Guest page: queue rows look like a music app list (cover, title, artist below).
   Each row has a vote button "▲ votes" on the right, a hint explains it, and the
   requests and the songs from the party playlist are shown as two sections.
+- Admin UI: the queue uses the same rows (cover, title, artist, request details) with
+  the votes as "▲ count" next to Pin and Remove; the base playlist songs follow in their
+  own section with their number.
 
 ## 0.2.1
 

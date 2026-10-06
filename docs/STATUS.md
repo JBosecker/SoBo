@@ -138,7 +138,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.2.1 (before release) | Feedback: guests should be able to vote for the base playlist songs | 0.2.1: preview entries carry a stable ID (`pl.…`); a vote turns the song into a request without submitter (costs a vote) |
 | 0.2.1 | Feedback: show all base playlist songs, not only five | 0.2.2: setting **Base playlist songs shown in the queue** (default 0 = all, at most 500); a large playlist makes every guest update larger (about 250 bytes per song) |
 | 0.2.1 | Feedback: switching the jukebox off should stop the music | 0.2.2: pause on switch-off (not during a manual override); the stopped song counts as played |
-| 0.2.1 | Feedback: unclear where to vote in the queue; rows like Apple Music wanted | 0.2.2: guest rows with cover, title and artist, hairline separators; vote capsule "▲ count" on the right; hint line; requests and base playlist in two sections |
+| 0.2.1 | Feedback: unclear where to vote in the queue; rows like Apple Music wanted | 0.2.2: guest rows with cover, title and artist, hairline separators; vote capsule "▲ count" on the right; hint line; requests and base playlist in two sections; the admin queue got the same rows (with Pin/Remove) |
 
 ## Open points / risks
 

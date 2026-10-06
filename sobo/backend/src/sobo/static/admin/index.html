@@ -56,13 +56,18 @@
         </div>
       </article>
 
-      <section aria-labelledby="queue-heading">
+      <section class="queue-card" aria-labelledby="queue-heading">
         <div class="section-head">
           <h2 id="queue-heading" data-i18n="queue_heading">Queue</h2>
           <span id="queue-count" class="muted"></span>
         </div>
         <p id="queue-empty" class="empty" data-i18n="queue_empty">No requests yet. If a base playlist is set, it fills the gaps.</p>
-        <ol id="queue" class="strips"></ol>
+        <ol id="queue" class="tracks"></ol>
+        <div id="fallback-head" class="section-head fallback-head" hidden>
+          <h3 data-i18n="fallback_heading">Then from the base playlist</h3>
+          <span id="fallback-count" class="muted"></span>
+        </div>
+        <ol id="fallback-queue" class="tracks"></ol>
       </section>
     </div>
 

@@ -67,6 +67,11 @@
       next_open: "Up next: chosen by the votes shortly before this song ends",
       requests_one: "{n} request",
       requests_other: "{n} requests",
+      songs_one: "{n} song",
+      songs_other: "{n} songs",
+      votes_n_one: "{n} vote",
+      votes_n_other: "{n} votes",
+      fallback_heading: "Then from the base playlist",
       votes_one: "vote",
       votes_other: "votes",
       pinned: "Pinned",
@@ -249,6 +254,11 @@
       next_open: "Als Nächstes: entscheiden die Stimmen kurz vor Ende dieses Songs",
       requests_one: "{n} Wunsch",
       requests_other: "{n} Wünsche",
+      songs_one: "{n} Song",
+      songs_other: "{n} Songs",
+      votes_n_one: "{n} Stimme",
+      votes_n_other: "{n} Stimmen",
+      fallback_heading: "Danach aus der Basis-Playlist",
       votes_one: "Stimme",
       votes_other: "Stimmen",
       pinned: "Angepinnt",
@@ -624,6 +634,26 @@
     }
   }
 
+  function cover(art) {
+    const box = el("div", { class: "art", "aria-hidden": "true" });
+    if (art && art.startsWith("https://")) {
+      const img = el("img", { alt: "", loading: "lazy", decoding: "async", src: art });
+      img.addEventListener("error", () => img.remove());
+      box.append(img);
+    }
+    return box;
+  }
+
+  function rowText(title, sub, meta) {
+    return el(
+      "div",
+      { class: "row-text" },
+      el("span", { class: "row-title", text: title }),
+      el("span", { class: "row-sub", text: sub || " " }),
+      meta ? el("span", { class: "row-meta", text: meta }) : null
+    );
+  }
+
   function renderQueue(queue, upcoming) {
     $("queue-empty").hidden = queue.length > 0;
     $("queue-count").textContent = queue.length ? tn("requests", queue.length) : "";
@@ -631,18 +661,23 @@
       ...queue.map((item) =>
         el(
           "li",
-          { class: "strip" + (item.pinned ? " pinned" : "") },
-          el("div", { class: "strip-votes" }, el("b", { text: item.votes }), el("span", { text: t(item.votes === 1 ? "votes_one" : "votes_other") })),
+          { class: "track" + (item.pinned ? " pinned" : "") },
+          cover(item.art),
+          rowText(
+            item.title,
+            item.artist,
+            [item.pinned ? t("pinned") : "", origin(item), ago(item.submitted_at)].filter(Boolean).join(" · ")
+          ),
           el(
-            "div",
-            { class: "strip-text" },
-            el("span", { class: "strip-title", text: item.title }),
-            el("span", { class: "strip-artist", text: item.artist || " " }),
-            el("span", { class: "strip-meta", text: [origin(item), ago(item.submitted_at)].filter(Boolean).join(", ") })
+            "span",
+            { class: "votes", title: tn("votes_n", item.votes) },
+            el("span", { class: "arrow", "aria-hidden": "true", text: "▲" }),
+            el("span", { class: "count", text: item.votes }),
+            el("span", { class: "visually-hidden", text: t(item.votes === 1 ? "votes_one" : "votes_other") })
           ),
           el(
             "div",
-            { class: "strip-actions" },
+            { class: "row-actions" },
             el("button", {
               type: "button",
               class: "button",
@@ -660,22 +695,13 @@
             })
           )
         )
-      ),
-      // Base playlist: plays once the requests are through.
-      ...upcoming.map((track) =>
-        el(
-          "li",
-          { class: "strip fallback" },
-          el("div", { class: "strip-votes", "aria-hidden": "true" }, "♪"),
-          el(
-            "div",
-            { class: "strip-text" },
-            el("span", { class: "strip-title", text: track.title }),
-            el("span", { class: "strip-artist", text: track.artist || " " }),
-            el("span", { class: "strip-meta", text: t("from_fallback") })
-          )
-        )
       )
+    );
+    // Base playlist: plays once the requests are through; guests can vote it up.
+    $("fallback-head").hidden = upcoming.length === 0;
+    $("fallback-count").textContent = upcoming.length ? tn("songs", upcoming.length) : "";
+    $("fallback-queue").replaceChildren(
+      ...upcoming.map((track) => el("li", { class: "track fallback" }, cover(track.art), rowText(track.title, track.artist)))
     );
   }
 

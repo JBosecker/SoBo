@@ -920,7 +920,7 @@ class Jukebox:
             "next": self._admin_item(nxt) if nxt else None,
             "queue": [self._admin_item(i) for i in self.queue.waiting()],
             "fallback_upcoming": [
-                {"title": t.title, "artist": t.artist} for _, t in self.fallback_preview()
+                self._track_view(t, covers=True) for _, t in self.fallback_preview()
             ],
             "history": [self._admin_item(i) for i in self.queue.played(20)],
             "guests": {"total": len(self.guests), "active": self.active_guest_count()},
