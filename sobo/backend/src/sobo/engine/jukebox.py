@@ -44,7 +44,8 @@ _LOG = logging.getLogger(__name__)
 SEARCH_RESULTS = 20
 GUEST_QUEUE_LIMIT = 30
 # Base playlist tracks shown after the requests (guest page and admin UI)
-FALLBACK_PREVIEW = 5
+# Upper bound for the base playlist preview ("all" songs), like the playlist length.
+MAX_FALLBACK_PREVIEW = 500
 PREVIEW_PREFIX = "pl."
 MAX_ENQUEUE_ATTEMPTS = 3
 # A STOPPED right after starting is a transition, not the end of the track.
@@ -375,7 +376,9 @@ class Jukebox:
             old = self.settings
             self.settings = new
             self.repo.save_settings(new)
-            if new.fallback != old.fallback:
+            # Reload the base playlist unless only the preview length changed.
+            same = {"preview_count"}
+            if new.fallback.model_dump(exclude=same) != old.fallback.model_dump(exclude=same):
                 self._fallback = None
                 self._fallback_source = None
                 self._fallback_retry_at = None
@@ -639,6 +642,19 @@ class Jukebox:
                 raise RuleViolation("no_speaker")
 
     async def _deactivate(self) -> None:
+        """Stop the music when the jukebox is switched off (or its time window ends).
+
+        The current song counts as played; switching on again starts with the next one.
+        Music someone started in the Sonos app (manual override) keeps playing.
+        """
+        if self.state != JukeboxState.MANUAL_OVERRIDE and self.queue.playing is not None:
+            try:
+                await self.worker.call(lambda a: a.pause())
+            except SonosError as err:
+                _LOG.warning("Could not stop playback: %s", err)
+        current = self.queue.playing
+        if current is not None:
+            self._finish(current, ItemState.PLAYED)
         nxt = self.queue.next_item
         if nxt is not None:
             self._unset_next(nxt)
@@ -646,6 +662,7 @@ class Jukebox:
                 await self.worker.call(lambda a: a.clear_next())
             except SonosError as err:
                 _LOG.warning("Could not remove the next track: %s", err)
+        self._changed()
         self._set_state(JukeboxState.INACTIVE)
 
     def _set_service_error(self, code: str | None) -> None:
@@ -781,6 +798,10 @@ class Jukebox:
     def key_of(self, track: Track) -> str:
         return self.adapter.track_key(track)
 
+    def _preview_count(self) -> int:
+        count = self.settings.fallback.preview_count
+        return MAX_FALLBACK_PREVIEW if count == 0 else min(count, MAX_FALLBACK_PREVIEW)
+
     def fallback_preview(self) -> list[tuple[str, Track]]:
         """(preview ID, track) of the base playlist songs that play after the requests.
 
@@ -793,7 +814,7 @@ class Jukebox:
         exclude |= {self.key(i) for i in self.queue.waiting()}
         preview = [
             (PREVIEW_PREFIX + hashlib.sha256(self.key_of(t).encode()).hexdigest()[:16], t)
-            for t in self._fallback.upcoming(FALLBACK_PREVIEW, exclude)
+            for t in self._fallback.upcoming(self._preview_count(), exclude)
         ]
         self._preview = dict(preview)
         return preview

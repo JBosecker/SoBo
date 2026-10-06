@@ -33,14 +33,20 @@ und für Gäste außerhalb deines WLANs Home Assistant Cloud (Nabu Casa).
 - **Einstellungen:** Lautsprecher und Höchstlautstärke, Apple-Music-Konto,
   Basis-Playlist (eine Playlist aus der Apple-Music-Mediathek dieses Kontos), Stimmen,
   Regeln für Wünsche, Zeitfenster.
+- **Protokoll:** Wer hat wann was geändert.
 
 Der nächste Song wird erst kurz vor dem Ende des laufenden festgelegt (standardmäßig
 30 Sekunden, **Einstellungen → Stimmen**). Bis dahin können Gäste noch abstimmen und
 den nächsten Song beeinflussen.
 
-Nach den Wünschen zeigt die Warteschlange die nächsten Songs der Basis-Playlist. Gäste
-können auch für sie stimmen; eine Stimme macht den Song zu einem normalen Wunsch.
-- **Protokoll:** Wer hat wann was geändert.
+Nach den Wünschen zeigt die Warteschlange die Songs der Basis-Playlist in der Reihenfolge,
+in der sie laufen werden (standardmäßig alle; **Einstellungen → Musik → Songs der
+Basis-Playlist in der Warteschlange** begrenzt die Anzahl). Gäste können auch für sie
+stimmen; eine Stimme macht den Song zu einem normalen Wunsch.
+
+Wird die Jukebox ausgeschaltet (oder endet ihr Zeitfenster), stoppt die Musik; der
+gestoppte Song gilt als gespielt. Musik, die in der Sonos-App gestartet wurde, bleibt
+unberührt.
 
 ## Sicherheit
 

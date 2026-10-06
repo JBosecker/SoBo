@@ -25,14 +25,19 @@ the language of the browser or phone.
 - **Settings:** speaker and maximum volume, Apple Music account, base playlist (a
   playlist from that account's Apple Music library), votes, rules for requests, time
   window.
+- **Log:** who changed what and when.
 
 The next song is fixed only shortly before the current one ends (30 seconds by default,
 **Settings → Votes**). Until then guests can still vote, and the leading request moves
 up; once fixed, it is handed to Sonos so the transition is seamless.
 
-After the requests, the queue shows the next songs of the base playlist. Guests can vote
-for them too: a vote turns the song into a regular request.
-- **Log:** who changed what and when.
+After the requests, the queue shows the songs of the base playlist in the order they
+will play (all of them by default; **Settings → Music → Base playlist songs shown in the
+queue** limits the number). Guests can vote for them too: a vote turns the song into a
+regular request.
+
+Turning the jukebox off (or the end of its time window) stops the music; the stopped
+song counts as played. Music started in the Sonos app is left alone.
 
 ## Options
 

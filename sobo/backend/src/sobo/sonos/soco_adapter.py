@@ -326,7 +326,13 @@ class SoCoAdapter:
             self.coordinator.stop()
 
     def pause(self) -> None:
-        self.coordinator.pause()
+        from soco.exceptions import SoCoUPnPException
+
+        try:
+            self.coordinator.pause()
+        except SoCoUPnPException as err:
+            if str(err.error_code) != "701":  # 701: nothing playing, so nothing to pause
+                raise
 
     def resume(self) -> None:
         self.coordinator.play()

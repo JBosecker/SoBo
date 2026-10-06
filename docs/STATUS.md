@@ -61,12 +61,14 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 6. **Fallback track vs. fixing:** if a base playlist track is queued as next and a
    guest suggestion arrives, the fallback track is replaced. Guest tracks stay
    fixed, as planned.
-7. **Jukebox off:** the current track plays to the end, SoBo enqueues nothing more
-   (the "next" track is removed from the Sonos queue).
+7. **Jukebox off:** playback stops (pause) and the current song counts as played;
+   the "next" track is removed from the Sonos queue. Music someone started in the
+   Sonos app (manual override) keeps playing. Since 0.2.2; before, the current track
+   played to the end.
 8. **Async tests with the anyio plugin** instead of pytest-asyncio (backend).
 9. **Guest page without Vite/npm.** Hand-written HTML/CSS/JS (no framework); a
    Python script combines everything into one file and computes the CSP hashes.
-   34 KB instead of the < 50 KB target, no npm dependencies.
+   37 KB instead of the < 50 KB target, no npm dependencies.
 10. **`wait` with an optional wait time.** After aborts the page sends a shorter
     wait time (plan 4.4: halve, at least 5 s); the app never uses more than the
     admin setting.
@@ -134,6 +136,9 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.1.3 | Feedback: the base playlist list showed Sonos playlists, not the Apple Music playlists of the selected account | 0.2.0: Apple Music library playlists per account; confirmed on the real system (root → `collection:view:libraryroot` → `libraryplaylist:` entries; Apple answers some folder requests with a generic `SOAP-ENV:Server` fault, such folders are skipped) |
 | 0.2.0 | Feedback: the base playlist should also appear in the queue | 0.2.1: preview of the next five base playlist songs after the requests (guest page and admin UI) |
 | 0.2.1 (before release) | Feedback: guests should be able to vote for the base playlist songs | 0.2.1: preview entries carry a stable ID (`pl.…`); a vote turns the song into a request without submitter (costs a vote) |
+| 0.2.1 | Feedback: show all base playlist songs, not only five | 0.2.2: setting **Base playlist songs shown in the queue** (default 0 = all, at most 500); a large playlist makes every guest update larger (about 250 bytes per song) |
+| 0.2.1 | Feedback: switching the jukebox off should stop the music | 0.2.2: pause on switch-off (not during a manual override); the stopped song counts as played |
+| 0.2.1 | Feedback: unclear where to vote in the queue; rows like Apple Music wanted | 0.2.2: guest rows with cover, title and artist, hairline separators; vote capsule "▲ count" on the right; hint line; requests and base playlist in two sections |
 
 ## Open points / risks
 

@@ -21,6 +21,8 @@ class SpeakerSettings(_Model):
 class FallbackSettings(_Model):
     source_id: str | None = None
     shuffle: bool = True
+    # How many base playlist songs the queue shows after the requests; 0 shows all.
+    preview_count: int = Field(default=0, ge=0, le=500)
 
 
 class VoteSettings(_Model):

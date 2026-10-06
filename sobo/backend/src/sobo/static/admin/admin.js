@@ -146,6 +146,7 @@
         account_id: ["Apple Music account"],
         "fallback.source_id": ["Base playlist", "A playlist from the Apple Music library of the chosen account. Plays while there are no requests."],
         "fallback.shuffle": ["Shuffle the base playlist"],
+        "fallback.preview_count": ["Base playlist songs shown in the queue", "0 shows all songs of the playlist. Guests can vote for each of them."],
         "votes.votes_per_window": ["Votes per guest"],
         "votes.window_minutes": ["Period in minutes", "A used vote comes back after this time."],
         "votes.suggestion_costs_vote": ["A suggestion costs a vote"],
@@ -327,6 +328,7 @@
         account_id: ["Apple-Music-Konto"],
         "fallback.source_id": ["Basis-Playlist", "Eine Playlist aus der Apple-Music-Mediathek des gewählten Kontos. Läuft, solange keine Wünsche da sind."],
         "fallback.shuffle": ["Basis-Playlist zufällig abspielen"],
+        "fallback.preview_count": ["Songs der Basis-Playlist in der Warteschlange", "0 zeigt alle Songs der Playlist. Gäste können für jeden davon abstimmen."],
         "votes.votes_per_window": ["Stimmen pro Gast"],
         "votes.window_minutes": ["Zeitraum in Minuten", "Eine verbrauchte Stimme kommt nach dieser Zeit zurück."],
         "votes.suggestion_costs_vote": ["Ein Vorschlag kostet eine Stimme"],
@@ -809,6 +811,7 @@
       { path: "account_id", type: "account" },
       { path: "fallback.source_id", type: "source" },
       { path: "fallback.shuffle", type: "checkbox" },
+      { path: "fallback.preview_count", type: "number", min: 0, max: 500 },
     ],
     votes: [
       { path: "votes.votes_per_window", type: "number", min: 1, max: 100 },

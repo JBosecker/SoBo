@@ -61,17 +61,20 @@
 
     <section id="results" class="results" hidden aria-label="Search results" data-i18n-attr="aria-label:results_label">
       <p id="results-note" class="quiet"></p>
-      <ul id="results-list" class="strips"></ul>
+      <ul id="results-list" class="rows"></ul>
     </section>
 
     <section id="queue" aria-label="Queue" data-i18n-attr="aria-label:queue_label">
       <h2 class="queue-title" data-i18n="queue_title">Requested next</h2>
+      <p class="vote-hint" data-i18n="vote_hint">Tap ▲ to vote for a song. The most votes play first.</p>
+      <p id="me-line" class="me-line"></p>
       <p id="queue-empty" class="quiet" hidden data-i18n="queue_empty">No requests yet. Search for a song above and suggest it.</p>
-      <ol id="queue-list" class="strips"></ol>
+      <ol id="queue-list" class="rows"></ol>
+      <h2 id="playlist-title" class="queue-title playlist-title" hidden data-i18n="playlist_title">Then from the party playlist</h2>
+      <ol id="playlist-list" class="rows"></ol>
     </section>
 
     <footer class="me">
-      <p id="me-line"></p>
       <p id="cover-note" class="fine" hidden data-i18n="cover_note">Covers are loaded directly from Apple.</p>
     </footer>
   </section>

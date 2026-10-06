@@ -443,16 +443,41 @@ async def test_skip(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
     assert second.state == ItemState.PLAYING
 
 
-async def test_deactivate_clears_next(jukebox: Jukebox, fake: FakeSonosAdapter) -> None:
+async def test_deactivate_stops_playback(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
     g = make_guest(jukebox)
-    await suggest_title(jukebox, g, "Slow Comet")
+    first = await suggest_title(jukebox, g, "Slow Comet")
     nxt = await suggest_title(jukebox, g, "Copper Sky")
     await jukebox.tick()
+    await near_end(jukebox, fake, clock)
+    assert jukebox.queue.next_item is nxt
     await jukebox.set_active(False, "admin")
     await jukebox.tick()
     assert jukebox.state == JukeboxState.INACTIVE
+    assert fake.transport == TransportState.PAUSED
+    assert first.state == ItemState.PLAYED
     assert nxt.state == ItemState.QUEUED
     assert len(fake.queue) == 1
+    # Switching on again starts with the next request, not the stopped song.
+    await jukebox.set_active(True, "admin")
+    await jukebox.tick()
+    assert nxt.state == ItemState.PLAYING
+    assert fake.transport == TransportState.PLAYING
+
+
+async def test_deactivate_leaves_music_from_the_sonos_app_alone(
+    jukebox: Jukebox, fake: FakeSonosAdapter
+) -> None:
+    await suggest_title(jukebox, make_guest(jukebox), "Slow Comet")
+    await jukebox.tick()
+    fake.external_play(fake.catalog[-2])
+    await jukebox.tick()
+    assert jukebox.state == JukeboxState.MANUAL_OVERRIDE
+    await jukebox.set_active(False, "admin")
+    await jukebox.tick()
+    assert "pause" not in fake.calls
+    assert fake.transport == TransportState.PLAYING
 
 
 async def test_rotate_sessions(jukebox: Jukebox) -> None:
@@ -679,3 +704,17 @@ async def test_vote_for_a_base_playlist_song_makes_it_a_request(
     assert err.value.code == "unknown_item"
     await near_end(jukebox, fake, clock)
     assert jukebox.queue.next_item is item
+
+
+async def test_base_playlist_preview_count(jukebox: Jukebox) -> None:
+    await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
+    await jukebox.tick()
+    g = make_guest(jukebox)
+    upcoming = [e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]
+    assert len(upcoming) == 11  # all songs of the playlist except the one playing
+    await apply(
+        jukebox,
+        fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False, preview_count=3),
+    )
+    assert len([e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]) == 3
+    assert len(jukebox.admin_view()["fallback_upcoming"]) == 3

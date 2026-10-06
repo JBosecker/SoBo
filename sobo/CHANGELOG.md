@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.2
+
+- The queue shows all songs of the base playlist after the requests, no longer only
+  the next five. New setting **Music → Base playlist songs shown in the queue**
+  (0 = all, the default).
+- Switching the jukebox off (or the end of its time window) now stops the music. The
+  stopped song counts as played; switching on again continues with the next song.
+  Music someone started in the Sonos app is left alone.
+- Guest page: queue rows look like a music app list (cover, title, artist below).
+  Each row has a vote button "▲ votes" on the right, a hint explains it, and the
+  requests and the songs from the party playlist are shown as two sections.
+
 ## 0.2.1
 
 - The queue shows what the base playlist will play after the requests (next five

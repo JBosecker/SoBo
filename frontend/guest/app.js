@@ -38,12 +38,12 @@
       seconds: "{s} s",
       failed: "That did not work. Please try again.",
       possible_again: " Possible again in {time}.",
-      voted: "Voted",
-      vote: "Vote",
       voted_label: "You voted for {title}",
       vote_label: "Vote for {title}",
       your_request: "Your request",
-      from_playlist: "From the party playlist",
+      pinned: "Pinned by the host",
+      vote_hint: "Tap ▲ to vote for a song. The most votes play first.",
+      playlist_title: "Then from the party playlist",
       me_one: "{name}, you have {n} vote left.",
       me_other: "{name}, you have {n} votes left.",
       next_vote: " The next one comes in {time}.",
@@ -113,12 +113,12 @@
       seconds: "{s} Sek.",
       failed: "Das hat nicht geklappt. Versuch es noch mal.",
       possible_again: " Wieder möglich in {time}",
-      voted: "Gestimmt",
-      vote: "Dafür",
       voted_label: "Du hast für {title} gestimmt",
       vote_label: "Für {title} stimmen",
       your_request: "Dein Wunsch",
-      from_playlist: "Aus der Party-Playlist",
+      pinned: "Vom Gastgeber angepinnt",
+      vote_hint: "Tippe auf ▲, um für einen Song zu stimmen. Die meisten Stimmen laufen zuerst.",
+      playlist_title: "Danach aus der Party-Playlist",
       me_one: "{name}, du hast noch {n} Stimme.",
       me_other: "{name}, du hast noch {n} Stimmen.",
       next_vote: " Die nächste gibt es in {time}",
@@ -302,11 +302,25 @@
     return node;
   }
 
-  function strip(track, extraClass) {
-    const li = el("li", "strip" + (extraClass ? " " + extraClass : ""));
-    const text = el("div", "strip-text");
-    text.append(el("span", "strip-title", track.title));
-    text.append(el("span", "strip-artist", track.artist || " "));
+  /** One row like in Apple Music: cover, title, artist (+ optional tag), action on the right. */
+  function row(track, extraClass, tag) {
+    const li = el("li", "row" + (extraClass ? " " + extraClass : ""));
+    const art = el("div", "art");
+    if (track.art) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.loading = "lazy";
+      img.src = track.art;
+      img.addEventListener("error", () => img.remove());
+      art.append(img);
+    }
+    li.append(art);
+    const text = el("div", "row-text");
+    text.append(el("span", "row-title", track.title));
+    const sub = el("span", "row-sub");
+    if (tag) sub.append(el("span", "tag", tag));
+    sub.append(document.createTextNode(track.artist || ""));
+    text.append(sub);
     li.append(text);
     return li;
   }
@@ -360,8 +374,8 @@
   function voteButton(item) {
     const button = el("button", "vote" + (item.voted ? " on" : ""));
     button.type = "button";
+    button.append(el("span", "arrow", "▲"));
     button.append(el("span", "count", String(item.votes)));
-    button.append(el("span", "verb", item.voted ? t("voted") : t("vote")));
     button.setAttribute(
       "aria-label",
       t(item.voted ? "voted_label" : "vote_label", { title: item.title })
@@ -372,24 +386,27 @@
   }
 
   function renderQueue() {
-    const list = $("queue-list");
     const items = state.queue || [];
-    list.replaceChildren(
-      ...items.map((item) => {
-        if (item.fallback) {
-          // Base playlist: plays once the requests are through. A vote makes it a request.
-          const li = strip(item, "fallback");
-          li.firstChild.append(el("span", "strip-meta", t("from_playlist")));
-          li.append(voteButton(item));
-          return li;
-        }
-        const li = strip(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "));
-        if (item.mine) li.firstChild.append(el("span", "strip-meta", t("your_request")));
+    const requests = items.filter((item) => !item.fallback);
+    const playlist = items.filter((item) => item.fallback);
+    $("queue-list").replaceChildren(
+      ...requests.map((item) => {
+        const tag = item.mine ? t("your_request") : item.pinned ? t("pinned") : null;
+        const li = row(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "), tag);
         li.append(voteButton(item));
         return li;
       })
     );
-    $("queue-empty").hidden = items.some((item) => !item.fallback);
+    // Base playlist: plays once the requests are through. A vote makes it a request.
+    $("playlist-list").replaceChildren(
+      ...playlist.map((item) => {
+        const li = row(item, "fallback");
+        li.append(voteButton(item));
+        return li;
+      })
+    );
+    $("playlist-title").hidden = playlist.length === 0;
+    $("queue-empty").hidden = requests.length > 0;
   }
 
   function renderMe() {
@@ -490,8 +507,8 @@
   }
 
   function resultRow(hit) {
-    const li = strip(hit);
-    if (hit.album) li.firstChild.append(el("span", "strip-meta", hit.album));
+    const li = row(hit, "", null);
+    if (hit.album) li.querySelector(".row-sub").append(document.createTextNode(` · ${hit.album}`));
     let button;
     if (hit.queued) {
       const queued = (state.queue || []).find((q) => q.id === hit.queued);
@@ -507,9 +524,9 @@
       button.disabled = true;
       button.title = MESSAGES[hit.blocked] || "";
     } else {
-      button = el("button", "vote");
-      button.append(el("span", "count", "+"));
-      button.append(el("span", "verb", t("request")));
+      button = el("button", "vote add");
+      button.append(el("span", "arrow", "+"));
+      button.append(el("span", "count", t("request")));
       button.setAttribute("aria-label", t("suggest_label", { title: hit.title }));
       button.addEventListener("click", () => suggest(hit.id, button));
     }
