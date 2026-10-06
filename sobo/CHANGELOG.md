@@ -4,7 +4,10 @@
 
 - The queue shows what the base playlist will play after the requests (next five
   songs, marked "From the party playlist" on the guest page and "From the base
-  playlist" in the admin UI). They are a preview: guests cannot vote on them.
+  playlist" in the admin UI).
+- Guests can vote for these songs too. A vote turns the song into a regular request
+  (it costs a vote like any other), so it moves up with the other requests. The admin
+  UI marks it "From the base playlist, voted up by guests".
 
 ## 0.2.0
 

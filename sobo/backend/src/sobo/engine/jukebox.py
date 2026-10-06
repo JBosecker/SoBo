@@ -9,6 +9,7 @@ after guest actions).
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import random
 from collections.abc import Callable
@@ -44,6 +45,7 @@ SEARCH_RESULTS = 20
 GUEST_QUEUE_LIMIT = 30
 # Base playlist tracks shown after the requests (guest page and admin UI)
 FALLBACK_PREVIEW = 5
+PREVIEW_PREFIX = "pl."
 MAX_ENQUEUE_ATTEMPTS = 3
 # A STOPPED right after starting is a transition, not the end of the track.
 MIN_PLAY_SECONDS = 5
@@ -112,6 +114,7 @@ class Jukebox:
         self.last_error: str | None = None
         self.override_info: str | None = None
         self.fallback_error: str | None = None
+        self._preview: dict[str, Track] = {}
         # "music_auth": the music service rejects the household's stored sign-in
         self.service_error: str | None = None
         self.search_cache = SearchCache(clock)
@@ -320,6 +323,8 @@ class Jukebox:
     async def vote(self, guest: Guest, item_id: str) -> QueueItem:
         async with self._lock:
             self._require_guest_can_act(guest)
+            if item_id.startswith(PREVIEW_PREFIX):
+                return self._promote_preview(guest, item_id)
             item = self.queue.get(item_id)
             if item is None or not item.is_open:
                 raise RuleViolation("unknown_item")
@@ -327,6 +332,28 @@ class Jukebox:
                 raise RuleViolation("locked")
             self._add_vote(guest, item)
             return item
+
+    def _promote_preview(self, guest: Guest, preview_id: str) -> QueueItem:
+        """A vote for an upcoming base playlist song turns it into a regular request."""
+        self.fallback_preview()  # refresh the mapping of preview IDs
+        track = self._preview.get(preview_id)
+        if track is None:
+            raise RuleViolation("unknown_item")
+        existing = self.queue.open_by_key(self.key_of(track))
+        if existing is not None:
+            if existing.state != ItemState.QUEUED:
+                raise RuleViolation("locked")
+            self._add_vote(guest, existing)
+            return existing
+        remaining, retry = self.vote_budget(guest.id)
+        if remaining <= 0:
+            raise RuleViolation("no_votes_left", retry_after=retry)
+        # No submitter: the host chose it for the base playlist, the guests pick it now.
+        item = QueueItem(new_id(), track, Origin.GUEST, self._now())
+        self.queue.add(item)
+        self._save(item)
+        self._add_vote(guest, item)
+        return item
 
     def _add_vote(self, guest: Guest, item: QueueItem) -> None:
         if guest.id in item.voters:
@@ -751,13 +778,25 @@ class Jukebox:
             view["art"] = track.art_url
         return view
 
-    def fallback_preview(self) -> list[Track]:
-        """Base playlist tracks that will play once the requests are through."""
+    def key_of(self, track: Track) -> str:
+        return self.adapter.track_key(track)
+
+    def fallback_preview(self) -> list[tuple[str, Track]]:
+        """(preview ID, track) of the base playlist songs that play after the requests.
+
+        Guests can vote for them; the stable preview ID maps a vote back to the song.
+        """
         if self._fallback is None:
+            self._preview = {}
             return []
         exclude = {self.key(i) for i in (self.queue.playing, self.queue.next_item) if i}
         exclude |= {self.key(i) for i in self.queue.waiting()}
-        return self._fallback.upcoming(FALLBACK_PREVIEW, exclude)
+        preview = [
+            (PREVIEW_PREFIX + hashlib.sha256(self.key_of(t).encode()).hexdigest()[:16], t)
+            for t in self._fallback.upcoming(FALLBACK_PREVIEW, exclude)
+        ]
+        self._preview = dict(preview)
+        return preview
 
     def guest_view(self, guest: Guest | None) -> dict[str, Any]:
         """Compact state for the guest page (target < 10 KB)."""
@@ -790,8 +829,10 @@ class Jukebox:
                 if item.submitted_by == guest.id:
                     entry["mine"] = True
             entries.append(entry)
-        for track in self.fallback_preview():
+        for preview_id, track in self.fallback_preview():
             entry = self._track_view(track, covers)
+            entry["id"] = preview_id
+            entry["votes"] = 0
             entry["fallback"] = True
             entries.append(entry)
         view["queue"] = entries
@@ -858,7 +899,7 @@ class Jukebox:
             "next": self._admin_item(nxt) if nxt else None,
             "queue": [self._admin_item(i) for i in self.queue.waiting()],
             "fallback_upcoming": [
-                {"title": t.title, "artist": t.artist} for t in self.fallback_preview()
+                {"title": t.title, "artist": t.artist} for _, t in self.fallback_preview()
             ],
             "history": [self._admin_item(i) for i in self.queue.played(20)],
             "guests": {"total": len(self.guests), "active": self.active_guest_count()},

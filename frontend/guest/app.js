@@ -377,9 +377,10 @@
     list.replaceChildren(
       ...items.map((item) => {
         if (item.fallback) {
-          // Base playlist: plays once the requests are through; nothing to vote on.
+          // Base playlist: plays once the requests are through. A vote makes it a request.
           const li = strip(item, "fallback");
           li.firstChild.append(el("span", "strip-meta", t("from_playlist")));
+          li.append(voteButton(item));
           return li;
         }
         const li = strip(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "));

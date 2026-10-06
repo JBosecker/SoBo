@@ -651,8 +651,31 @@ async def test_base_playlist_follows_the_requests_in_the_views(
     view = jukebox.guest_view(g)
     assert view["queue"][0]["id"] == wish.id
     upcoming = [e for e in view["queue"] if e.get("fallback")]
-    assert upcoming and all("id" not in e for e in upcoming)
+    assert upcoming and all(e["id"].startswith("pl.") and e["votes"] == 0 for e in upcoming)
     assert playing.track.title not in [e["title"] for e in upcoming]
     assert [e["title"] for e in upcoming] == [
         t["title"] for t in jukebox.admin_view()["fallback_upcoming"]
     ]
+
+
+async def test_vote_for_a_base_playlist_song_makes_it_a_request(
+    jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    await apply(jukebox, fallback=FallbackSettings(source_id="fake_playlist:party", shuffle=False))
+    await jukebox.tick()
+    g, h = make_guest(jukebox, "G"), make_guest(jukebox, "H")
+    upcoming = [e for e in jukebox.guest_view(g)["queue"] if e.get("fallback")]
+    third = upcoming[2]  # not the first in line
+    item = await jukebox.vote(g, third["id"])
+    assert item.origin == Origin.GUEST and item.submitted_by is None
+    assert item.voters == {g.id}
+    assert jukebox.vote_budget(g.id)[0] == jukebox.settings.votes.votes_per_window - 1
+    view = jukebox.guest_view(h)
+    assert view["queue"][0]["id"] == item.id  # now a regular request at the top
+    assert third["title"] not in [e["title"] for e in view["queue"] if e.get("fallback")]
+    assert (await jukebox.vote(h, item.id)).votes == 2
+    with pytest.raises(RuleViolation) as err:
+        await jukebox.vote(g, "pl.unknown")
+    assert err.value.code == "unknown_item"
+    await near_end(jukebox, fake, clock)
+    assert jukebox.queue.next_item is item

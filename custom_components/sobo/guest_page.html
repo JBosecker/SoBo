@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oltJGfFVKSOoDkTSb2jv+HCrNlV5s7P8b3VtKyNxvyY='; style-src 'sha256-BX0P5OJ2Xs61oObdY3QU3Cn8o0+/aV3QHKgeQ6n5TJA='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xwsV26l6r6YZ0qpYH3iU9+mZEb2chD2oOkaekd/o0TE='; style-src 'sha256-BX0P5OJ2Xs61oObdY3QU3Cn8o0+/aV3QHKgeQ6n5TJA='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -584,9 +584,10 @@ input:focus { border-color: var(--amber); outline: none; }
     list.replaceChildren(
       ...items.map((item) => {
         if (item.fallback) {
-          // Base playlist: plays once the requests are through; nothing to vote on.
+          // Base playlist: plays once the requests are through. A vote makes it a request.
           const li = strip(item, "fallback");
           li.firstChild.append(el("span", "strip-meta", t("from_playlist")));
+          li.append(voteButton(item));
           return li;
         }
         const li = strip(item, [item.mine && "mine", item.pinned && "pinned"].filter(Boolean).join(" "));

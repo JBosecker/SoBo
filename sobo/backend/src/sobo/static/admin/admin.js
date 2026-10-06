@@ -62,6 +62,7 @@
       fallback_error: "The base playlist cannot be loaded: {error}",
       from_fallback: "From the base playlist",
       requested_by: "Requested by {name}",
+      voted_from_playlist: "From the base playlist, voted up by guests",
       next_line: "Up next: {title} by {artist}{origin}",
       next_open: "Up next: chosen by the votes shortly before this song ends",
       requests_one: "{n} request",
@@ -242,6 +243,7 @@
       fallback_error: "Die Basis-Playlist lässt sich nicht laden: {error}",
       from_fallback: "Aus der Basis-Playlist",
       requested_by: "Wunsch von {name}",
+      voted_from_playlist: "Aus der Basis-Playlist, von Gästen hochgestimmt",
       next_line: "Als Nächstes: {title} von {artist}{origin}",
       next_open: "Als Nächstes: entscheiden die Stimmen kurz vor Ende dieses Songs",
       requests_one: "{n} Wunsch",
@@ -582,6 +584,7 @@
   function origin(item) {
     if (item.origin === "fallback") return t("from_fallback");
     if (item.submitted_by) return t("requested_by", { name: item.submitted_by });
+    if (item.origin === "guest" && !item.submitted_by_id) return t("voted_from_playlist");
     return "";
   }
 

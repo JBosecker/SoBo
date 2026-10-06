@@ -207,6 +207,20 @@ def test_pauses_while_hidden(browser: Browser, harness: tuple[Harness, str]) -> 
     assert h.faults.actions[count] == "state"
 
 
+def test_vote_for_a_party_playlist_song(browser: Browser, harness: tuple[Harness, str]) -> None:
+    _, url = harness
+    page = open_page(browser, url)
+    join(page, "Mia")
+    playlist = page.locator("#queue-list li.fallback")
+    expect(playlist.first).to_contain_text("From the party playlist", timeout=8000)
+    title = playlist.nth(1).locator(".strip-title").inner_text()
+    playlist.nth(1).locator("button").click()
+    voted = page.locator("#queue-list li:not(.fallback)", has_text=title)
+    expect(voted.locator(".vote.on")).to_be_visible()
+    expect(voted.locator(".count")).to_have_text("1")
+    expect(page.locator("#me-line")).to_contain_text("4 votes left")
+
+
 def test_german_localization(browser: Browser, harness: tuple[Harness, str]) -> None:
     _, url = harness
     page = open_page(browser, url, locale="de-DE")
