@@ -670,8 +670,19 @@ class Jukebox:
                 await self.worker.call(lambda a: a.release(config), timeout=30)
             except SonosError as err:
                 _LOG.warning("Could not ungroup the speakers: %s", err)
-        # A new party starts with an empty guest list: everyone joins again.
+        # Switching on again starts like a fresh jukebox: no guests, no waiting
+        # requests, queue not frozen, base playlist planned anew.
         self._reset_guests()
+        for item in list(self.queue):
+            if item.state == ItemState.QUEUED:
+                item.state = ItemState.REMOVED
+                item.removed_reason = "reset"
+                item.finished_at = self._now()
+                self._save(item)
+        self.frozen = False
+        self._fallback = None
+        self._fallback_source = None
+        self._preview = {}
         self._changed()
         self._set_state(JukeboxState.INACTIVE)
 

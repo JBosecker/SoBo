@@ -11,9 +11,10 @@
   recognises the same song (same artist and title) even though Apple Music uses other
   IDs in the library than in the search: the request moves the song up instead, and
   the base playlist does not play it again later in that round.
-- Switching the jukebox off also dissolves the speaker group SoBo formed and empties
-  the guest list (all guest sessions end; guests join again for the next party).
-  Waiting requests stay in the queue.
+- Switching the jukebox off now resets it as if freshly started: the speaker group
+  SoBo formed is dissolved, the guest list is emptied (all guest sessions end; guests
+  join again for the next party), waiting requests are removed, a frozen queue is
+  released and the base playlist is planned anew.
 - Guest page: "Your request" and "Pinned by the host" moved to a small line below the
   artist. The song that is fixed to play next is the first, highlighted row of the queue
   ("Up next", no voting), instead of a line below the current song.

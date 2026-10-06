@@ -50,9 +50,10 @@ oben (SoBo erkennt gleichen Interpreten und Titel) und erscheint nicht doppelt.
 
 Wird die Jukebox ausgeschaltet (oder endet ihr Zeitfenster), stoppt die Musik; der
 gestoppte Song gilt als gespielt. Musik, die in der Sonos-App gestartet wurde, bleibt
-unberührt. Die Lautsprecher, die SoBo gruppiert hat, werden wieder getrennt, und die
-Gästeliste wird geleert: Gäste treten bei der nächsten Party neu bei. Wartende Wünsche
-bleiben in der Warteschlange.
+unberührt. Die Lautsprecher, die SoBo gruppiert hat, werden wieder getrennt, und beim
+nächsten Einschalten startet die Jukebox wie neu: Gästeliste und wartende Wünsche sind
+geleert (Gäste treten neu bei), die Warteschlange ist nicht mehr angehalten und die
+Basis-Playlist beginnt von vorn. Der Verlauf der gespielten Songs bleibt erhalten.
 
 ## Sicherheit
 

@@ -42,8 +42,9 @@ the same artist and title), so it does not appear twice.
 
 Turning the jukebox off (or the end of its time window) stops the music; the stopped
 song counts as played. Music started in the Sonos app is left alone. The speakers SoBo
-grouped are ungrouped again and the guest list is emptied: guests join again for the
-next party. Waiting requests stay in the queue.
+grouped are ungrouped again, and the jukebox starts the next time like freshly
+installed: the guest list and the waiting requests are cleared (guests join again), the
+queue is no longer frozen and the base playlist starts anew. The play history stays.
 
 ## Options
 

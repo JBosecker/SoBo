@@ -67,8 +67,9 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
    the "next" track is removed from the Sonos queue. Music someone started in the
    Sonos app (manual override) keeps playing. Since 0.2.2; before, the current track
    played to the end. Since 0.2.3 switching off also ungroups the configured members
-   from the coordinator and empties the guest list (sessions, vote budgets); waiting
-   requests stay.
+   from the coordinator and resets the party: guests, sessions, vote budgets and
+   waiting requests (removed with reason `reset`) are cleared, the freeze is lifted and
+   the base playlist is reloaded. The play history (repeat rules, log) stays.
 8. **Async tests with the anyio plugin** instead of pytest-asyncio (backend).
 9. **Guest page without Vite/npm.** Hand-written HTML/CSS/JS (no framework); a
    Python script combines everything into one file and computes the CSP hashes.
@@ -145,7 +146,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.2.1 | Feedback: unclear where to vote in the queue; rows like Apple Music wanted | 0.2.2: guest rows with cover, title and artist, hairline separators; vote capsule "▲ count" on the right; hint line; requests and base playlist in two sections; the admin queue got the same rows (with Pin/Remove) |
 | 0.2.2 | Bug: a vote ~5 s before the end swapped the fixed base playlist song; the music stopped with the voted song stuck as "next" (race: the next track left the Sonos queue just as the current one ended) | 0.2.3: a fixed next track is never swapped by guests (the lock window is the voting deadline, feedback); a STOPPED transport on the current track ends it even with a fixed next, which is then started directly |
 | 0.2.2 | Bug: a request for a song in the base playlist appeared twice (library and catalog IDs differ) | 0.2.3: songs also matched by a normalised "artist \| title" key (`engine/songs.py`) for duplicates, preview and the base playlist rotation; a played request is taken out of the planned round |
-| 0.2.2 | Feedback: switching off should also ungroup the speakers and reset the guests | 0.2.3: `SonosAdapter.release()` unjoins the configured members; guests, sessions and vote budgets are cleared |
+| 0.2.2 | Feedback: switching off should also ungroup the speakers and reset the guests and waiting requests ("like freshly started") | 0.2.3: `SonosAdapter.release()` unjoins the configured members; guests, sessions, vote budgets and waiting requests are cleared, freeze lifted, base playlist reloaded |
 | 0.2.2 | Feedback: badge position; the fixed next song looked confusing below the current one | 0.2.3: note line below the artist; fixed next song as the highlighted first queue row (guest page and admin UI) |
 
 ## Open points / risks

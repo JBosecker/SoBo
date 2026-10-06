@@ -469,22 +469,24 @@ async def test_deactivate_stops_playback(
     await jukebox.tick()
     await near_end(jukebox, fake, clock)
     assert jukebox.queue.next_item is nxt
+    await jukebox.set_frozen(True, "admin")
     await jukebox.set_active(False, "admin")
     await jukebox.tick()
     assert jukebox.state == JukeboxState.INACTIVE
     assert fake.transport == TransportState.PAUSED
     assert first.state == ItemState.PLAYED
-    assert nxt.state == ItemState.QUEUED
     assert len(fake.queue) == 1
-    # The group SoBo formed is dissolved and the guest list starts empty again.
+    # Like a fresh start: group dissolved, no guests, no waiting requests.
     assert "release" in fake.calls and fake.configured is None
     assert not jukebox.guests and jukebox.guest_for_token(g.token_hash) is None
-    # Switching on again groups again and starts with the next request.
+    assert nxt.state == ItemState.REMOVED and nxt.removed_reason == "reset"
+    assert jukebox.queue.waiting() == [] and not jukebox.frozen
+    # Switching on again groups again and starts from scratch (nothing requested yet).
     await jukebox.set_active(True, "admin")
     await jukebox.tick()
     assert fake.configured is not None
-    assert nxt.state == ItemState.PLAYING
-    assert fake.transport == TransportState.PLAYING
+    assert jukebox.queue.playing is None
+    assert jukebox.state == JukeboxState.IDLE
 
 
 async def test_deactivate_leaves_music_from_the_sonos_app_alone(
