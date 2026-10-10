@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ESswGCxFxgD3vXmSueiRpJcuSzztiJaI4Jo6+ygiqDo='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ASLzQMogzbnsiLKwTEfWG9OogBM+WEIpNcqyAJ0NPkE='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -466,6 +466,7 @@ input:focus { border-color: var(--amber); outline: none; }
   let session = store.get(SESSION_KEY);
   let state = null;
   let version = 0;
+  let epoch = null; // changes when the app restarts (its version counter starts at 0 again)
   let receivedAt = 0;
   let searchTimer = 0;
   let searchSeq = 0;
@@ -572,8 +573,13 @@ input:focus { border-color: var(--amber); outline: none; }
 
   function applyState(next) {
     if (!next) return;
+    // Answers can arrive out of order (cloudhook relay, a poll overlapping a vote): never
+    // replace a newer state with an older one, or a fresh vote would vanish until the
+    // next update.
+    if (state && next.epoch === epoch && (next.version || 0) < version) return;
     state = next;
-    version = next.version || version;
+    epoch = next.epoch || null;
+    version = next.version || 0;
     receivedAt = Date.now();
     if (!next.active) {
       show("off");
@@ -855,6 +861,7 @@ input:focus { border-color: var(--amber); outline: none; }
 
   async function longPollOnce() {
     const payload = withSession({ action: "wait", since: version });
+    if (epoch) payload.epoch = epoch;
     if (sync.waitSeconds) payload.timeout = sync.waitSeconds;
     const expected = (sync.waitSeconds || 20) * 1000;
     const started = Date.now();

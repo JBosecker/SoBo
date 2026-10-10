@@ -220,6 +220,33 @@ async def test_wait_wakes_on_change(service: GuestService, jukebox: Jukebox) -> 
     assert body["changed"] is True and body["version"] == version + 1
 
 
+async def test_wait_answers_at_once_after_an_app_restart(
+    service: GuestService, jukebox: Jukebox
+) -> None:
+    # The page still holds the version and epoch of the previous run of the app.
+    session = await joined(service)
+    version = jukebox.notifier.version
+    _, body = await call(service, action="wait", session=session, since=version + 500)
+    assert body["changed"] is True and body["state"]["epoch"] == jukebox.notifier.epoch
+    _, body = await asyncio.wait_for(
+        call(service, action="wait", session=session, since=version, epoch="0ld3poch"), 1
+    )
+    assert body["changed"] is True and body["version"] == version
+
+
+async def test_wait_with_current_epoch_waits(service: GuestService, jukebox: Jukebox) -> None:
+    session = await joined(service)
+    notifier = jukebox.notifier
+    task = asyncio.create_task(
+        call(service, action="wait", session=session, since=notifier.version, epoch=notifier.epoch)
+    )
+    await asyncio.sleep(0.02)
+    assert not task.done()
+    notifier.bump()
+    _, body = await asyncio.wait_for(task, 1)
+    assert body["changed"] is True
+
+
 async def test_wait_timeout(service: GuestService, jukebox: Jukebox) -> None:
     session = await joined(service)
     jukebox.settings.guest_access.long_poll_timeout = 5

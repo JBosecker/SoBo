@@ -23,6 +23,11 @@ T0 = datetime(2026, 1, 1, 20, 0, tzinfo=UTC)
 # --------------------------------------------------------------------------- change signal
 
 
+def test_notifier_epoch_differs_per_instance() -> None:
+    # A restarted app starts its version at 0 again; the epoch tells pages apart.
+    assert ChangeNotifier().epoch != ChangeNotifier().epoch
+
+
 @pytest.mark.anyio
 async def test_notifier_returns_immediately_when_newer() -> None:
     notifier = ChangeNotifier()

@@ -177,10 +177,11 @@ sobo/                                  # Git repo = HA app repository
 - **CSP via `<meta http-equiv>`**, since response headers do not arrive: `default-src 'none'; script-src 'sha256-…'; style-src 'sha256-…'; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'`. There is no `frame-ancestors` protection via meta; however, the page has no clickable actions with potential for harm outside the jukebox.
 - Features: search (debounce, min. 2 characters), suggest, upvote, remaining votes with countdown, "Now playing", queue with your own suggestions highlighted
 - **Live updates via long polling:**
-  1. The page sends `{"action":"wait","since":<version>}`.
-  2. The app responds **immediately** if the current version is newer. Otherwise it waits for the change signal, at most `long_poll_timeout` (default 20 s, configurable in the admin UI). After that it responds with `{"changed":false,"version":…}`.
+  1. The page sends `{"action":"wait","since":<version>,"epoch":<epoch>}`. The epoch is a random ID per start of the app (the version counter starts at 0 again after a restart).
+  2. The app responds **immediately** if the current version is newer, or if `since`/`epoch` come from an earlier run of the app. Otherwise it waits for the change signal, at most `long_poll_timeout` (default 20 s, configurable in the admin UI). After that it responds with `{"changed":false,"version":…}`.
   3. The page immediately sends the next `wait` request. Its own actions (vote, suggestion) return the new state directly in their response.
-  4. The integration proxy has a timeout of wait time + 5 s.
+  4. Responses can arrive out of order (relay, a poll overlapping an action). The page ignores a state with a lower version than the one it shows (same epoch), so a newer state is never replaced by an older one (since 0.2.5).
+  5. The integration proxy has a timeout of wait time + 5 s.
 - **Fallback:** If a `wait` fails with a network error or 5xx before the wait time is up, the page halves the wait time (lower bound 5 s). After 3 consecutive failures it switches to normal polling every ~5 s (`action:"state"`) and retries long polling after a few minutes. On errors there is backoff with jitter, so that not all guests retry at the same time.
 - **Economical:** When the tab is in the background (Page Visibility API), no requests are made. On returning, a `state` is sent immediately.
 - No room selection, no volume, no playback control

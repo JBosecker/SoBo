@@ -221,6 +221,7 @@
   let session = store.get(SESSION_KEY);
   let state = null;
   let version = 0;
+  let epoch = null; // changes when the app restarts (its version counter starts at 0 again)
   let receivedAt = 0;
   let searchTimer = 0;
   let searchSeq = 0;
@@ -327,8 +328,13 @@
 
   function applyState(next) {
     if (!next) return;
+    // Answers can arrive out of order (cloudhook relay, a poll overlapping a vote): never
+    // replace a newer state with an older one, or a fresh vote would vanish until the
+    // next update.
+    if (state && next.epoch === epoch && (next.version || 0) < version) return;
     state = next;
-    version = next.version || version;
+    epoch = next.epoch || null;
+    version = next.version || 0;
     receivedAt = Date.now();
     if (!next.active) {
       show("off");
@@ -610,6 +616,7 @@
 
   async function longPollOnce() {
     const payload = withSession({ action: "wait", since: version });
+    if (epoch) payload.epoch = epoch;
     if (sync.waitSeconds) payload.timeout = sync.waitSeconds;
     const expected = (sync.waitSeconds || 20) * 1000;
     const started = Date.now();

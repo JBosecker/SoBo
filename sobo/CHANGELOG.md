@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.5
+
+- Fix: votes sometimes vanished from the guest page for a moment and came back later.
+  Answers from SoBo can arrive out of order (through the Nabu Casa relay, or when a
+  regular update overlaps a vote), and the page showed whichever came last, even an
+  older state. The guest page and the admin UI now ignore states older than the one
+  they show.
+- Fix: after a restart of the app, open guest pages could stay on the old state until
+  the guest did something. The page now notices the restart and updates right away.
+
 ## 0.2.4
 
 - Fix: on a tie in votes the queue order now follows who got there first. A song that

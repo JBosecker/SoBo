@@ -540,7 +540,10 @@
 
   async function refreshStatus() {
     try {
-      status = await api("GET", "api/status");
+      const fresh = await api("GET", "api/status");
+      // Overlapping requests can finish out of order: keep the newer state.
+      if (status && fresh.epoch === status.epoch && fresh.version < status.version) return;
+      status = fresh;
     } catch (err) {
       showBanner(t("no_connection"), null);
       return;

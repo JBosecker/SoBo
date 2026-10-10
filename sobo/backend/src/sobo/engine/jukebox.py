@@ -858,6 +858,7 @@ class Jukebox:
         covers = self.settings.guest_access.show_covers
         view: dict[str, Any] = {
             "version": self.notifier.version,
+            "epoch": self.notifier.epoch,
             "active": self.effectively_active,
             "state": self.state.value,
             "frozen": self.frozen,
@@ -939,6 +940,7 @@ class Jukebox:
         nxt = self.queue.next_item
         return {
             "version": self.notifier.version,
+            "epoch": self.notifier.epoch,
             "state": self.state.value,
             "active": self.settings.active,
             "effectively_active": self.effectively_active,

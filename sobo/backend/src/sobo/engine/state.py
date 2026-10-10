@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import secrets
 from enum import StrEnum
 
 
@@ -26,6 +27,9 @@ class ChangeNotifier:
 
     def __init__(self) -> None:
         self._version = 0
+        # Changes with every start of the app: the version starts at 0 again, so pages
+        # compare versions only within the same epoch.
+        self.epoch = secrets.token_hex(4)
         self._event = asyncio.Event()
 
     @property

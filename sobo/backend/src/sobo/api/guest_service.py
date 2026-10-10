@@ -50,6 +50,8 @@ class WaitAction(_Action):
     action: Literal["wait"]
     session: _Session
     since: int = Field(ge=0, le=2**53)
+    # Epoch of `since` (see ChangeNotifier); a different one means the app restarted.
+    epoch: str | None = Field(default=None, min_length=1, max_length=32)
     # The guest page shortens the wait after aborts (plan 4.4); never longer than the admin setting.
     timeout: int | None = Field(default=None, ge=5, le=60)
 
@@ -151,7 +153,7 @@ class GuestService:
             case StateAction():
                 return 200, {"ok": True, "state": self.jb.guest_view(guest)}
             case WaitAction():
-                return await self._wait(guest, action.since, action.timeout)
+                return await self._wait(guest, action.since, action.timeout, action.epoch)
             case SearchAction():
                 return await self._search(guest, action.q)
             case SuggestAction():
@@ -174,10 +176,14 @@ class GuestService:
         guest = self.jb.join(nickname, token_hash, action.code)
         return 200, {"ok": True, "session": token, "state": self.jb.guest_view(guest)}
 
-    async def _wait(self, guest: Guest, since: int, timeout: int | None = None) -> Response:
+    async def _wait(
+        self, guest: Guest, since: int, timeout: int | None = None, epoch: str | None = None
+    ) -> Response:
         access = self.jb.settings.guest_access
         notifier = self.jb.notifier
-        if notifier.version > since:
+        # Newer, or `since` is from before a restart of the app (other epoch, or a version
+        # the counter has not reached yet): answer right away with the current state.
+        if since != notifier.version or (epoch is not None and epoch != notifier.epoch):
             return 200, self._changed(guest)
         previous = self.open_polls.get(guest.id)
         if previous is not None:
