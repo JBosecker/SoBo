@@ -46,10 +46,11 @@ def test_ranking_invariants(specs: list[tuple[int, bool, int]]) -> None:
         # pinned always first
         assert a.pinned or not b.pinned
         if a.pinned == b.pinned:
-            # Within the same pin group: more votes first, on a tie older first
+            # Within the same pin group: more votes first, on a tie the one that
+            # reached its vote count first
             assert a.votes >= b.votes
             if a.votes == b.votes:
-                assert a.submitted_at <= b.submitted_at
+                assert a.reached_at <= b.reached_at
 
 
 @given(item_specs)

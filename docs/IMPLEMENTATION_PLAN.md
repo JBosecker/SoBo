@@ -206,8 +206,12 @@ SoCo cannot re-sort the Sonos queue. Therefore:
 ### 5.2 Ranking (upvotes only)
 
 ```
-sorted by: pinned DESC, votes DESC, submitted_at ASC
+sorted by: pinned DESC, votes DESC, reached_at ASC
 ```
+
+`reached_at` is the time of the item's latest vote, i.e. when it reached its current vote
+count (votes can only be added). On a tie the song that got there first leads (changed in
+0.2.4; before, the tie-breaker was `submitted_at`).
 
 A suggestion automatically counts as the suggester's first vote. A fairness bonus based on waiting time remains a later option.
 

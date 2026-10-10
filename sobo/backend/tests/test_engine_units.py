@@ -94,6 +94,19 @@ def test_ranking_order() -> None:
     assert [i.id for i in ranked([a, b, c, d])] == ["id3", "id2", "id1", "id0"]
 
 
+def test_ranking_tie_goes_to_first_to_reach_the_count() -> None:
+    # a was requested first, but b got its second vote earlier → b leads.
+    a = _item(0, votes=2, offset=0)
+    b = _item(1, votes=2, offset=60)
+    b.last_vote_at = T0 + timedelta(seconds=120)
+    a.last_vote_at = T0 + timedelta(seconds=300)
+    assert [i.id for i in ranked([a, b])] == ["id1", "id0"]
+    # Without later votes the request time decides.
+    c = _item(2, votes=1, offset=10)
+    d = _item(3, votes=1, offset=5)
+    assert [i.id for i in ranked([c, d])] == ["id3", "id2"]
+
+
 def test_fallback_ordered_cycles_and_excludes() -> None:
     tracks = fake_catalog()[:3]
     playlist = FallbackPlaylist(tracks, shuffle=False, key_fn=lambda t: t.item_id)

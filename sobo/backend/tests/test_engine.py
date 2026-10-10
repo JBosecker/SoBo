@@ -127,6 +127,30 @@ async def test_ranking_picks_most_votes_when_next_is_chosen(
     assert err.value.code == "locked"
 
 
+async def test_tie_goes_to_the_song_that_reached_the_votes_first(
+    jukebox: Jukebox, repo: MemoryRepository, fake: FakeSonosAdapter, clock: ManualClock
+) -> None:
+    a, b, c, d = (make_guest(jukebox, n) for n in "ABCD")
+    await suggest_title(jukebox, a, "Slow Comet")
+    await jukebox.tick()
+    early = await suggest_title(jukebox, a, "Velvet Engine")
+    clock.advance(10)
+    late = await suggest_title(jukebox, b, "Copper Sky")
+    assert [i.id for i in jukebox.queue.waiting()] == [early.id, late.id]
+    clock.advance(10)
+    await jukebox.vote(c, late.id)  # `late` reaches 2 votes first …
+    clock.advance(10)
+    await jukebox.vote(d, early.id)  # … `early` only afterwards
+    assert [i.id for i in jukebox.queue.waiting()] == [late.id, early.id]
+
+    # The order survives a restart (rebuilt from the stored votes).
+    for item in (early, late):
+        item.last_vote_at = None
+    restarted = Jukebox(SonosWorker(fake), repo, clock, rng=random.Random(1))
+    assert [i.id for i in restarted.queue.waiting()] == [late.id, early.id]
+    restarted.worker.shutdown()
+
+
 async def test_transition_to_next_and_refill(
     jukebox: Jukebox, fake: FakeSonosAdapter, clock: ManualClock
 ) -> None:

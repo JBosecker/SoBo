@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4
+
+- Fix: on a tie in votes the queue order now follows who got there first. A song that
+  reached its vote count earlier stays ahead of one that only caught up later, even if
+  the latter was requested earlier. Before, only the time of the request counted, so a
+  song could jump ahead with a vote that came after the other song's vote.
+
 ## 0.2.3
 
 - Fix: a vote in the last seconds of a song could stop the music, with the voted song

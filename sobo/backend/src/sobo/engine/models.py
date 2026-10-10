@@ -60,10 +60,18 @@ class QueueItem:
     started_at: datetime | None = None
     finished_at: datetime | None = None
     removed_reason: str | None = None
+    # Time of the most recent vote (the suggestion counts as the first one). Votes can
+    # only be added, so this is when the item reached its current vote count.
+    last_vote_at: datetime | None = None
 
     @property
     def votes(self) -> int:
         return len(self.voters)
+
+    @property
+    def reached_at(self) -> datetime:
+        """When the item reached its current vote count (tie-breaker in the ranking)."""
+        return self.last_vote_at or self.submitted_at
 
     @property
     def is_open(self) -> bool:

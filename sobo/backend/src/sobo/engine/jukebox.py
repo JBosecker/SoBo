@@ -109,6 +109,8 @@ class Jukebox:
             voted = self.queue.get(vote.item_id)
             if voted is not None:
                 voted.voters.add(vote.guest_id)
+                if voted.last_vote_at is None or vote.created_at > voted.last_vote_at:
+                    voted.last_vote_at = vote.created_at
 
         self.state = JukeboxState.INACTIVE
         self.frozen = False
@@ -313,6 +315,7 @@ class Jukebox:
             now = self._now()
             item = QueueItem(new_id(), track, Origin.GUEST, now, submitted_by=guest.id)
             item.voters.add(guest.id)
+            item.last_vote_at = now
             self.queue.add(item)
             self._save(item)
             vote = Vote(guest.id, item.id, now, counts=costs)
@@ -365,6 +368,7 @@ class Jukebox:
             raise RuleViolation("no_votes_left", retry_after=retry)
         vote = Vote(guest.id, item.id, self._now(), counts=True)
         item.voters.add(guest.id)
+        item.last_vote_at = vote.created_at
         self._votes.setdefault(guest.id, []).append(vote)
         self.repo.save_vote(vote)
         self._changed()

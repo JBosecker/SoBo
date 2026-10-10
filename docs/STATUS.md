@@ -148,6 +148,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.2.2 | Bug: a request for a song in the base playlist appeared twice (library and catalog IDs differ) | 0.2.3: songs also matched by a normalised "artist \| title" key (`engine/songs.py`) for duplicates, preview and the base playlist rotation; a played request is taken out of the planned round |
 | 0.2.2 | Feedback: switching off should also ungroup the speakers and reset the guests and waiting requests ("like freshly started") | 0.2.3: `SonosAdapter.release()` unjoins the configured members; guests, sessions, vote budgets and waiting requests are cleared, freeze lifted, base playlist reloaded |
 | 0.2.2 | Feedback: badge position; the fixed next song looked confusing below the current one | 0.2.3: note line below the artist; fixed next song as the highlighted first queue row (guest page and admin UI) |
+| 0.2.3 | Bug: on equal votes a song voted later could be ahead of one voted earlier (tie-breaker was the request time) | 0.2.4: tie-breaker is the time of the latest vote (`QueueItem.last_vote_at`, rebuilt from the stored votes after a restart); plan 5.2 updated |
 
 ## Open points / risks
 
