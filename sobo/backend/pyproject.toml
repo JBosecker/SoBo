@@ -31,7 +31,7 @@ dev = [
 ]
 # Browser tests of the guest page and admin UI (Playwright)
 browser = [
-    "playwright>=1.48",
+    "playwright>=1.63.0",
 ]
 
 [project.scripts]
