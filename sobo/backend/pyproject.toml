@@ -15,7 +15,7 @@ dependencies = [
     "pydantic>=2.9,<3",
     "sqlmodel>=0.0.22,<0.1",
     "alembic>=1.20.0,<2",
-    "httpx>=0.28,<1",
+    "httpx>=0.28.1,<1",
     # SoCo fork with the music services browser, pinned to a fixed commit (plan 4.2).
     # The extra pulls in `cryptography`: Sonos sends the account list AES-encrypted.
     "soco[music-services] @ git+https://github.com/BookCatKid/SoCo-music-services-and-more.git@97dba03",
