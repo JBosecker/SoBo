@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -66,14 +67,19 @@ async def test_admin_index_via_ingress(ctx: AppContext) -> None:
         response = await client.get("/")
         assert response.status_code == 200
         assert "<title>SoBo</title>" in response.text
-        assert 'src="assets/admin.js"' in response.text  # relative because of the ingress prefix
+        # Relative because of the ingress prefix; the hash changes with the content, so a
+        # browser never pairs a new page with the script of the previous version.
+        script_src = re.search(r'src="(assets/admin\.js\?v=[0-9a-f]{12})"', response.text)
+        style_href = re.search(r'href="(assets/admin\.css\?v=[0-9a-f]{12})"', response.text)
+        assert script_src and style_href
         csp = response.headers["content-security-policy"]
         assert "script-src 'self'" in csp and "frame-ancestors 'self'" in csp
         assert "unsafe-inline" not in csp
         assert response.headers["cache-control"] == "no-store"
         assert response.headers["x-content-type-options"] == "nosniff"
-        script = await client.get("/assets/admin.js")
+        script = await client.get(script_src.group(1))
         assert script.status_code == 200
+        assert script.headers["cache-control"] == "no-cache"
         assert "javascript" in script.headers["content-type"]
         assert "innerHTML" not in script.text
         css = await client.get("/assets/admin.css")

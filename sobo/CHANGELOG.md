@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+- Fix: after updating to 0.3.0, the **Guest access** tab could show placeholders such
+  as `display_heading` instead of texts, and the party display card had no QR code.
+  The browser kept the admin UI's script of the previous version from its cache and
+  combined it with the new page. The admin UI now loads its script and stylesheet under
+  a new address whenever they change, and the browser checks them on every visit.
+
 ## 0.3.0
 
 - New: **party display** for a TV or tablet. It shows the song that is playing (cover,
