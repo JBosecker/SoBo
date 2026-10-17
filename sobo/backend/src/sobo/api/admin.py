@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from collections.abc import Awaitable, Callable
 from importlib import resources
@@ -220,8 +221,20 @@ SECURITY_HEADERS = {
 }
 
 
+ASSETS = ("admin.js", "admin.css")
+
+
 def _index_html() -> str:
-    return (ADMIN_DIR / "index.html").read_text(encoding="utf-8")
+    """The page with a content hash on every asset URL.
+
+    The page itself is never cached, the assets are: without the hash, a browser could
+    combine the new page with the script of the previous version after an update.
+    """
+    html = (ADMIN_DIR / "index.html").read_text(encoding="utf-8")
+    for name in ASSETS:
+        digest = hashlib.sha256((ADMIN_DIR / name).read_bytes()).hexdigest()[:12]
+        html = html.replace(f'"assets/{name}"', f'"assets/{name}?v={digest}"')
+    return html
 
 
 def create_admin_app(ctx: AppContext) -> FastAPI:
@@ -245,7 +258,10 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
         response = await call_next(request)
         for header, value in SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
-        if not request.url.path.startswith("/assets/"):
+        if request.url.path.startswith("/assets/"):
+            # Revalidate (ETag): never use a stale script without asking.
+            response.headers.setdefault("Cache-Control", "no-cache")
+        else:
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 
@@ -258,9 +274,11 @@ def create_admin_app(ctx: AppContext) -> FastAPI:
         _LOG.warning("Sonos error on %s: %s", request.url.path, exc)
         return JSONResponse({"error": "sonos_unavailable", "detail": str(exc)}, status_code=503)
 
+    index_html = _index_html()
+
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:
-        return _index_html()
+        return index_html
 
     app.include_router(router)
     app.mount("/assets", StaticFiles(directory=ADMIN_DIR), name="assets")
