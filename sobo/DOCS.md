@@ -20,7 +20,7 @@ the language of the browser or phone.
 - **Live:** what is playing, what comes next, the queue with votes and the guests.
   Songs can be pinned or removed, guests blocked and the queue frozen. If something
   else is started in the Sonos app, SoBo waits until you choose "Take over again".
-- **Guest access:** a QR code to put up (use "Print QR code" for an A4 sheet or a PDF),
+- **Guest access:** a QR code to put up (use "Print QR code" for an A4 sheet or a PDF; heading and text of the sheet can be changed under "Printed sheet"),
   copy the link, renew guest access. After renewing, old QR codes stop working.
 - **Settings:** speaker and maximum volume, Apple Music account, base playlist (a
   playlist from that account's Apple Music library), votes, rules for requests, time

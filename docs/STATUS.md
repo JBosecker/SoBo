@@ -150,6 +150,7 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 | 0.2.2 | Feedback: badge position; the fixed next song looked confusing below the current one | 0.2.3: note line below the artist; fixed next song as the highlighted first queue row (guest page and admin UI) |
 | 0.2.3 | Bug: on equal votes a song voted later could be ahead of one voted earlier (tie-breaker was the request time) | 0.2.4: tie-breaker is the time of the latest vote (`QueueItem.last_vote_at`, rebuilt from the stored votes after a restart); plan 5.2 updated |
 | 0.2.4 | Bug: votes vanished from the guest page for a while and came back later | 0.2.5: the page applied every answer, also an older one arriving late (relay, a poll overlapping a vote); now states with a lower version are ignored (guest page and admin UI). The version counter restarts at 0 with the app, so states carry a random `epoch` per start; `wait` answers at once for an older epoch or a `since` above the current version (before, pages stayed stale after an app restart) |
+| 0.2.5 | Feedback: the text on the printed QR code sheet should be customisable | 0.2.6: settings section `poster` (heading up to 100, text up to 600 characters; empty = default text of the UI language), edited under **Guest access → Printed sheet** |
 
 ## Open points / risks
 

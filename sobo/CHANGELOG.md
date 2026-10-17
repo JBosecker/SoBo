@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6
+
+- New: the texts on the printed QR code sheet can be changed. **Guest access → Printed
+  sheet** has a heading and a text below the QR code (line breaks are kept). Left empty,
+  the sheet shows the default text in the language of the admin UI, as before.
+
 ## 0.2.5
 
 - Fix: votes sometimes vanished from the guest page for a moment and came back later.
