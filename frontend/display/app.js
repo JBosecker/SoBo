@@ -438,6 +438,9 @@
   // ------------------------------------------------------------------ start
 
   function boot() {
+    // A new link pasted into the same tab only changes the fragment, which browsers do
+    // not reload for: start over so the new key is used (e.g. after a renewal).
+    window.addEventListener("hashchange", () => location.reload());
     applyStaticTexts();
     setupScreen();
     $("now-art").addEventListener("error", () => {

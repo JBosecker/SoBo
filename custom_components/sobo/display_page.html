@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mXTDF/qhQ34sNl1W9/bb2pe5t523fbcV9Fc53+1EmWk='; style-src 'sha256-Z/cPa8paRTOXTr1NV8OUaaiXoyRjcgrecTUyqh7b36Y='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-4xWttrhPqXEFfftVIIpGoQQ5FdhHYH2hcLtSWOAEWGU='; style-src 'sha256-Z/cPa8paRTOXTr1NV8OUaaiXoyRjcgrecTUyqh7b36Y='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -656,6 +656,9 @@ body.idle .fullscreen { display: none; }
   // ------------------------------------------------------------------ start
 
   function boot() {
+    // A new link pasted into the same tab only changes the fragment, which browsers do
+    // not reload for: start over so the new key is used (e.g. after a renewal).
+    window.addEventListener("hashchange", () => location.reload());
     applyStaticTexts();
     setupScreen();
     $("now-art").addEventListener("error", () => {

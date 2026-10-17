@@ -132,6 +132,20 @@ def test_renewed_key_closes_open_displays(browser: Browser, harness: tuple[Harne
     expect(page.locator("#view-denied")).to_be_visible(timeout=8000)
 
 
+def test_new_link_in_the_same_tab_uses_the_new_key(
+    browser: Browser, harness: tuple[Harness, str]
+) -> None:
+    h, url = harness
+    page = open_display(browser, display_url(h, url))
+    expect(page.locator("#view-main")).to_be_visible()
+    h.display_key.renew()
+    h.service.end_display_polls()
+    expect(page.locator("#view-denied")).to_be_visible(timeout=8000)
+    # Only the fragment differs: the browser does not reload on its own.
+    page.goto(display_url(h, url))
+    expect(page.locator("#view-main")).to_be_visible(timeout=8000)
+
+
 def test_off_and_back_on_by_itself(browser: Browser, harness: tuple[Harness, str]) -> None:
     h, url = harness
     page = open_display(browser, display_url(h, url))

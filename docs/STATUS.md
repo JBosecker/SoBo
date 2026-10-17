@@ -24,7 +24,7 @@ As of: 2026-10-17
 | Backend (engine, adapters, guest/admin API, party display, store, QR, fuzzing, load, container config) | `sobo/backend/tests` | 231 passed |
 | Guest page in the browser (Playwright/Chromium), incl. German locale | `sobo/backend/tests/test_guest_page.py` | 16 passed |
 | Admin UI in the browser, incl. German locale and fallback language | `sobo/backend/tests/test_admin_page.py` | 14 passed |
-| Party display in the browser (TV and portrait tablet, German locale, key renewal) | `sobo/backend/tests/test_display_page.py` | 9 passed |
+| Party display in the browser (TV and portrait tablet, German locale, key renewal) | `sobo/backend/tests/test_display_page.py` | 10 passed |
 | Integration (`pytest-homeassistant-custom-component`) | `tests/` | 31 passed |
 
 ```bash
