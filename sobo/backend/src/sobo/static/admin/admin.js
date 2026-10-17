@@ -110,6 +110,7 @@
       saved: "Saved.",
       range_error: "Please enter a value from {min} to {max}.",
       code_error: "Please enter 4 to 8 digits.",
+      length_error: "Please enter at most {max} characters.",
       value_error: "This value does not fit.",
       check_fields: "Please check the marked fields.",
       settings_conflict: "The settings do not fit together.",
@@ -142,6 +143,7 @@
         limits: ["Rules for requests"],
         schedule: ["Time window"],
         guest_access: ["Guest access settings"],
+        poster: ["Printed sheet", "Texts above and below the QR code when printing. Leave empty for the default text."],
       },
       fields: {
         "speaker.coordinator_uid": ["Speaker"],
@@ -175,6 +177,8 @@
         "guest_access.max_open_long_polls": ["Simultaneous live connections", "Beyond this, phones ask every few seconds instead."],
         "guest_access.show_covers": ["Show album covers", "Phones load covers directly from Apple."],
         "guest_access.unregister_when_inactive": ["Turn the guest link off while the jukebox is off"],
+        "poster.title": ["Heading"],
+        "poster.text": ["Text below the QR code", "Line breaks are kept. The presence code is added below it."],
       },
       actions: {
         settings: "Settings changed",
@@ -297,6 +301,7 @@
       saved: "Gespeichert.",
       range_error: "Bitte einen Wert von {min} bis {max} eingeben.",
       code_error: "Bitte 4 bis 8 Ziffern eingeben.",
+      length_error: "Bitte höchstens {max} Zeichen eingeben.",
       value_error: "Dieser Wert passt nicht.",
       check_fields: "Bitte die markierten Felder prüfen.",
       settings_conflict: "Die Einstellungen passen nicht zusammen.",
@@ -329,6 +334,7 @@
         limits: ["Regeln für Wünsche"],
         schedule: ["Zeitfenster"],
         guest_access: ["Einstellungen zum Gastzugang"],
+        poster: ["Ausdruck", "Texte über und unter dem QR-Code beim Drucken. Leer lassen für den Standardtext."],
       },
       fields: {
         "speaker.coordinator_uid": ["Lautsprecher"],
@@ -362,6 +368,8 @@
         "guest_access.max_open_long_polls": ["Gleichzeitige Live-Verbindungen", "Darüber fragen Handys alle paar Sekunden nach."],
         "guest_access.show_covers": ["Albumcover zeigen", "Die Handys laden Cover direkt von Apple."],
         "guest_access.unregister_when_inactive": ["Gast-Link abschalten, solange die Jukebox aus ist"],
+        "poster.title": ["Überschrift"],
+        "poster.text": ["Text unter dem QR-Code", "Zeilenumbrüche bleiben erhalten. Der Anwesenheitscode kommt darunter."],
       },
       actions: {
         settings: "Einstellungen geändert",
@@ -832,6 +840,9 @@
   }
 
   function printSheet() {
+    const poster = (settings && settings.poster) || {};
+    $("print-title").textContent = poster.title || t("print_title");
+    $("print-steps").textContent = poster.text || t("print_steps");
     const code = settings && settings.guest_access.presence_code;
     $("print-code").hidden = !code;
     $("print-code").textContent = code ? t("print_code", { code }) : "";
@@ -888,6 +899,10 @@
       { path: "guest_access.show_covers", type: "checkbox" },
       { path: "guest_access.unregister_when_inactive", type: "checkbox" },
     ],
+    poster: [
+      { path: "poster.title", type: "text", nullable: true, maxlength: 100, placeholder: "print_title", wide: true },
+      { path: "poster.text", type: "paragraph", nullable: true, maxlength: 600, placeholder: "print_steps", wide: true },
+    ],
   };
 
   function fieldText(field) {
@@ -941,7 +956,9 @@
       case "time":
         return wrap("", el("label", { for: id, text: label }), el("input", { type: "time", id, value: String(value || "").slice(0, 5), "aria-describedby": describedBy }), help, error);
       case "text":
-        return wrap("", el("label", { for: id, text: label }), el("input", { type: "text", id, value: value || "", inputmode: field.inputmode, autocomplete: "off", "aria-describedby": describedBy }), help, error);
+        return wrap("", el("label", { for: id, text: label }), el("input", { type: "text", id, value: value || "", inputmode: field.inputmode, maxlength: field.maxlength, placeholder: field.placeholder && t(field.placeholder), autocomplete: "off", "aria-describedby": describedBy }), help, error);
+      case "paragraph":
+        return wrap("", el("label", { for: id, text: label }), el("textarea", { id, text: value || "", maxlength: field.maxlength, placeholder: field.placeholder && t(field.placeholder), "aria-describedby": describedBy }), help, error);
       case "lines":
         return wrap("", el("label", { for: id, text: label }), el("textarea", { id, "aria-describedby": describedBy, text: (value || []).join("\n") }), help, error);
       case "speaker": {
@@ -989,6 +1006,7 @@
       case "members":
         return [...node.querySelectorAll("input:checked")].map((input) => input.value);
       case "text":
+      case "paragraph":
       case "time":
         return node.value.trim() === "" && field.nullable ? null : node.value.trim();
       default:
@@ -1067,6 +1085,7 @@
       return t("range_error", { min: field.min, max: field.max });
     }
     if (field && field.path === "guest_access.presence_code") return t("code_error");
+    if (field && field.maxlength !== undefined) return t("length_error", { max: field.maxlength });
     return t("value_error");
   }
 
