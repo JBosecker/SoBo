@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ASLzQMogzbnsiLKwTEfWG9OogBM+WEIpNcqyAJ0NPkE='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1T+rqst60lw9tX/0Ii1WXeVd3SsdtkncuJEsPfy8M0s='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -690,10 +690,12 @@ input:focus { border-color: var(--amber); outline: none; }
 
   async function suggest(resultId, button) {
     button.disabled = true;
+    const query = $("search").value;
     try {
       const body = await api(withSession({ action: "suggest", result: resultId }));
       applyState(body.state);
-      closeSearch();
+      // Leave a search alone that the guest started while the request was on its way.
+      if ($("search").value === query) closeSearch();
       toast(t("suggested"));
     } catch (err) {
       handleError(err);
@@ -721,12 +723,20 @@ input:focus { border-color: var(--amber); outline: none; }
 
   // ------------------------------------------------------------------ search
 
+  function hideResults() {
+    // Empty the list too, or the next search shows these hits until its answer arrives.
+    clearTimeout(searchTimer);
+    searchSeq++;
+    $("results").hidden = true;
+    $("results-note").textContent = "";
+    $("results-list").replaceChildren();
+    $("queue").hidden = false;
+  }
+
   function closeSearch() {
     $("search").value = "";
-    $("results").hidden = true;
     $("search-clear").hidden = true;
-    $("queue").hidden = false;
-    searchSeq++;
+    hideResults();
   }
 
   function onSearchInput() {
@@ -734,8 +744,7 @@ input:focus { border-color: var(--amber); outline: none; }
     clearTimeout(searchTimer);
     $("search-clear").hidden = q.length === 0;
     if (q.length < 2) {
-      $("results").hidden = true;
-      $("queue").hidden = false;
+      hideResults();
       return;
     }
     searchTimer = setTimeout(() => runSearch(q), 350);

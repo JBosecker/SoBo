@@ -445,10 +445,12 @@
 
   async function suggest(resultId, button) {
     button.disabled = true;
+    const query = $("search").value;
     try {
       const body = await api(withSession({ action: "suggest", result: resultId }));
       applyState(body.state);
-      closeSearch();
+      // Leave a search alone that the guest started while the request was on its way.
+      if ($("search").value === query) closeSearch();
       toast(t("suggested"));
     } catch (err) {
       handleError(err);
@@ -476,12 +478,20 @@
 
   // ------------------------------------------------------------------ search
 
+  function hideResults() {
+    // Empty the list too, or the next search shows these hits until its answer arrives.
+    clearTimeout(searchTimer);
+    searchSeq++;
+    $("results").hidden = true;
+    $("results-note").textContent = "";
+    $("results-list").replaceChildren();
+    $("queue").hidden = false;
+  }
+
   function closeSearch() {
     $("search").value = "";
-    $("results").hidden = true;
     $("search-clear").hidden = true;
-    $("queue").hidden = false;
-    searchSeq++;
+    hideResults();
   }
 
   function onSearchInput() {
@@ -489,8 +499,7 @@
     clearTimeout(searchTimer);
     $("search-clear").hidden = q.length === 0;
     if (q.length < 2) {
-      $("results").hidden = true;
-      $("queue").hidden = false;
+      hideResults();
       return;
     }
     searchTimer = setTimeout(() => runSearch(q), 350);

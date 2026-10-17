@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("playwright.sync_api")
 
-from playwright.sync_api import Browser, Page, expect, sync_playwright
+from playwright.sync_api import Browser, Page, Route, expect, sync_playwright
 
 from .guest_harness import Harness, create_harness, serve
 
@@ -109,6 +109,64 @@ def test_own_suggestion_is_marked(browser: Browser, harness: tuple[Harness, str]
     page.locator("#results-list li", has_text="Salt & Static").locator("button").click()
     mine = page.locator("#queue-list li.mine")
     expect(mine.first).to_contain_text("Your request")
+
+
+def test_new_search_does_not_show_previous_results(
+    browser: Browser, harness: tuple[Harness, str]
+) -> None:
+    _, url = harness
+    page = open_page(browser, url)
+    join(page, "Mia")
+    page.fill("#search", "comet")
+    page.locator("#results-list li", has_text="Slow Comet").locator("button").click()
+    expect(page.locator("#toast")).to_contain_text("Suggested")
+    expect(page.locator("#results-list li")).to_have_count(0)
+
+    # Hold the next answer back: while it is pending, no old hit may show up.
+    held: list[Route] = []
+
+    def hold_search(route: Route) -> None:
+        if b'"search"' in (route.request.post_data_buffer or b""):
+            held.append(route)
+        else:
+            route.continue_()
+
+    page.route("**/*", hold_search)
+    page.fill("#search", "velvet")
+    expect(page.locator("#results-note")).to_contain_text("Searching")
+    expect(page.locator("#results-list li")).to_have_count(0)
+    while not held:
+        page.wait_for_timeout(50)
+    for route in held:
+        route.continue_()
+    expect(page.locator("#results-list li", has_text="Velvet Engine")).to_be_visible()
+
+
+def test_search_typed_during_a_suggestion_stays(
+    browser: Browser, harness: tuple[Harness, str]
+) -> None:
+    _, url = harness
+    page = open_page(browser, url)
+    join(page, "Mia")
+    held: list[Route] = []
+
+    def hold_suggest(route: Route) -> None:
+        if b'"suggest"' in (route.request.post_data_buffer or b""):
+            held.append(route)
+        else:
+            route.continue_()
+
+    page.route("**/*", hold_suggest)
+    page.fill("#search", "comet")
+    page.locator("#results-list li", has_text="Slow Comet").locator("button").click()
+    while not held:
+        page.wait_for_timeout(50)
+    page.fill("#search", "velvet")
+    for route in held:
+        route.continue_()
+    expect(page.locator("#toast")).to_contain_text("Suggested")
+    expect(page.locator("#search")).to_have_value("velvet")
+    expect(page.locator("#results-list li", has_text="Velvet Engine")).to_be_visible()
 
 
 def test_xss_in_nickname_is_rendered_as_text(

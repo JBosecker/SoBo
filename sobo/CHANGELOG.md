@@ -5,6 +5,8 @@
 - New: the texts on the printed QR code sheet can be changed. **Guest access → Printed
   sheet** has a heading and a text below the QR code (line breaks are kept). Left empty,
   the sheet shows the default text in the language of the admin UI, as before.
+- Fix: after requesting a song, a new search on the guest page first showed the results
+  of the previous search until the new ones arrived. The old results are now cleared.
 
 ## 0.2.5
 
