@@ -527,7 +527,27 @@
 
   function resultRow(hit) {
     const li = row(hit, "", null);
-    if (hit.album) li.querySelector(".row-sub").append(document.createTextNode(` · ${hit.album}`));
+    const text = li.querySelector(".row-text");
+    const sub = text.querySelector(".row-sub");
+    // Artist and album as separate spans so the album is shortened first (style.css).
+    sub.replaceChildren(el("span", "row-artist", hit.artist || ""));
+    if (hit.album) sub.append(el("span", "row-album", `\u00a0· ${hit.album}`));
+    // Long names are clamped; a tap on the text shows them in full.
+    text.title = [hit.title, hit.artist, hit.album].filter(Boolean).join(" – ");
+    text.setAttribute("role", "button");
+    text.tabIndex = 0;
+    text.setAttribute("aria-expanded", "false");
+    const toggle = () => {
+      const open = li.classList.toggle("expanded");
+      text.setAttribute("aria-expanded", String(open));
+    };
+    text.addEventListener("click", toggle);
+    text.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
     let button;
     if (hit.queued) {
       const queued = (state.queue || []).find((q) => q.id === hit.queued);
