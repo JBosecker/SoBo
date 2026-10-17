@@ -22,6 +22,11 @@ the language of the browser or phone.
   else is started in the Sonos app, SoBo waits until you choose "Take over again".
 - **Guest access:** a QR code to put up (use "Print QR code" for an A4 sheet or a PDF; heading and text of the sheet can be changed under "Printed sheet"),
   copy the link, renew guest access. After renewing, old QR codes stop working.
+- **Party display:** under **Guest access**, turn on the party display and open its link
+  in the browser of a TV or tablet (or scan the display's QR code with the tablet). It
+  shows what is playing, the queue with votes and the QR code for guests, live and
+  without guest names. No Home Assistant login is needed on that screen. **Renew display
+  link** locks out displays that are open with the old link.
 - **Settings:** speaker and maximum volume, Apple Music account, base playlist (a
   playlist from that account's Apple Music library), votes, rules for requests, time
   window.
@@ -57,4 +62,5 @@ queue is no longer frozen and the base playlist starts anew. The play history st
 
 The admin UI is only reachable through Home Assistant (ingress). Guests can only
 reach the jukebox functions through a Nabu Casa cloudhook URL that reveals nothing
-about your Home Assistant address.
+about your Home Assistant address. The party display uses the same URL with its own key; anyone
+with the display link can only watch, not take part.

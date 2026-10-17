@@ -1,9 +1,11 @@
-"""Test environment for the guest page: behaves like the integration.
+"""Test environment for the guest page and the party display: behaves like the integration.
 
-GET serves `guest_page.html`, POST goes to the real `GuestService` with a
-simulated Sonos. Cloudhook relay failures can be switched on deliberately.
+GET serves `guest_page.html` (with `?view=display`: `display_page.html`), POST goes to
+the real `GuestService` with a simulated Sonos. Cloudhook relay failures can be
+switched on deliberately.
 
 To look at it in a browser:  python -m tests.guest_harness  → http://127.0.0.1:8740/g/demo
+(the party display link is printed on start)
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ import asyncio
 import contextlib
 import json
 import random
+import tempfile
 import threading
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -25,12 +28,14 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
+from sobo.access import DisplayKey, GuestAccessInfo
 from sobo.api.guest_service import GuestService
 from sobo.clock import ScaledClock, SystemClock
 from sobo.engine.jukebox import Jukebox
 from sobo.engine.persistence import MemoryRepository
 from sobo.engine.scheduler import Scheduler
 from sobo.engine.settings import (
+    DisplaySettings,
     FallbackSettings,
     GuestAccessSettings,
     JukeboxSettings,
@@ -40,7 +45,9 @@ from sobo.sonos.fake_adapter import FakeSonosAdapter
 from sobo.sonos.fixtures import FAKE_ACCOUNT_ID
 from sobo.sonos.worker import SonosWorker
 
-PAGE = Path(__file__).resolve().parents[3] / "custom_components" / "sobo" / "guest_page.html"
+COMPONENT = Path(__file__).resolve().parents[3] / "custom_components" / "sobo"
+PAGE = COMPONENT / "guest_page.html"
+DISPLAY_PAGE = COMPONENT / "display_page.html"
 
 
 @dataclass
@@ -57,6 +64,8 @@ class Harness:
     jukebox: Jukebox
     service: GuestService
     faults: Faults
+    display_key: DisplayKey
+    guest_access: GuestAccessInfo
     loop: asyncio.AbstractEventLoop | None = None
 
     def run(self, coro: Any) -> Any:
@@ -72,6 +81,7 @@ def settings(fallback: bool = True) -> JukeboxSettings:
         speaker=SpeakerSettings(coordinator_uid="RINCON_FAKE_LIVING"),
         fallback=FallbackSettings(source_id="fake_playlist:party" if fallback else None),
         guest_access=GuestAccessSettings(long_poll_timeout=5),
+        display=DisplaySettings(enabled=True),
         timezone="UTC",
     )
 
@@ -83,14 +93,18 @@ def create_harness(speed: float = 20.0, fallback: bool = True) -> Harness:
     repo.save_settings(settings(fallback))
     worker = SonosWorker(adapter)
     jukebox = Jukebox(worker, repo, clock, rng=random.Random(4))
-    service = GuestService(jukebox)
+    display_key = DisplayKey(Path(tempfile.mkdtemp(prefix="sobo-display-")) / "display_key")
+    guest_access = GuestAccessInfo()
+    service = GuestService(jukebox, guest_access=guest_access, display_key=display_key)
     scheduler = Scheduler(jukebox, interval=0.3)
     faults = Faults()
     page = PAGE.read_text(encoding="utf-8")
+    display_page = DISPLAY_PAGE.read_text(encoding="utf-8")
     holder: dict[str, Harness] = {}
 
-    async def get_page(_: Request) -> Response:
-        return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+    async def get_page(request: Request) -> Response:
+        html = display_page if request.query_params.get("view") == "display" else page
+        return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
     async def post_action(request: Request) -> Response:
         body = await request.body()
@@ -120,7 +134,7 @@ def create_harness(speed: float = 20.0, fallback: bool = True) -> Harness:
         ],
         lifespan=lifespan,
     )
-    harness = Harness(app, jukebox, service, faults)
+    harness = Harness(app, jukebox, service, faults, display_key, guest_access)
     holder["h"] = harness
     return harness
 
@@ -149,7 +163,9 @@ def serve(harness: Harness, port: int = 0) -> Iterator[str]:
 if __name__ == "__main__":
     demo = create_harness()
     with serve(demo, port=8740) as url:
+        demo.guest_access.local_url = url
         print(f"Guest page: {url}")
+        print(f"Party display: {demo.display_key.url(url)}")
         with contextlib.suppress(KeyboardInterrupt):
             while True:
                 time.sleep(1)

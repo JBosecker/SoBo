@@ -61,6 +61,38 @@ async def test_get_when_jukebox_off(
     assert "The jukebox is off right now." in await english.text()
 
 
+async def test_get_serves_display_page(
+    hass: HomeAssistant, client: AsyncMock, hass_client_no_auth: ClientSessionGenerator
+) -> None:
+    entry = await setup_sobo(hass)
+    http = await hass_client_no_auth()
+    html = await (await http.get(f"{path(entry)}?view=display")).text()
+    assert "Request a song!" in html and "What should play next?" not in html
+    assert "default-src 'none'" in html
+    # The display shows "off" itself and comes back when the party starts.
+    client.status.return_value = {**STATUS, "effectively_active": False}
+    await entry.runtime_data.coordinator.async_refresh()
+    html = await (await http.get(f"{path(entry)}?view=display")).text()
+    assert "Request a song!" in html
+    assert "The jukebox is off right now." in await (await http.get(path(entry))).text()
+
+
+async def test_display_page_through_the_cloud_relay(hass: HomeAssistant, client: AsyncMock) -> None:
+    entry = await setup_sobo(hass)
+    request = MockRequest(
+        content=b"",
+        mock_source="cloud",
+        method="GET",
+        headers={},
+        query_string="view=display",
+        remote=None,
+    )
+    response = await webhook.async_handle_webhook(hass, entry.data[CONF_WEBHOOK_ID], request)
+    serialized = serialize_response(response)
+    assert serialized["status"] == 200
+    assert "Request a song!" in serialized["body"]
+
+
 async def test_post_is_forwarded(
     hass: HomeAssistant, client: AsyncMock, hass_client_no_auth: ClientSessionGenerator
 ) -> None:

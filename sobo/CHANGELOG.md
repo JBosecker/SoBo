@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+- New: **party display** for a TV or tablet. It shows the song that is playing (cover,
+  title, artist, progress), what comes next with the votes, and the QR code for guests
+  (with the presence code, if set). It updates live, like the guest page, and scales from
+  a phone-sized tablet to a big TV, in landscape and portrait.
+  Turn it on under **Guest access → Party display settings**, then open the display link
+  in the browser of the TV or tablet, or scan its QR code with the tablet. The link works
+  through the same guest link (Nabu Casa or local), so the screen needs no Home Assistant
+  login. It keeps the screen awake where the browser allows it and offers a full-screen
+  button.
+  The display shows no guest names. While the jukebox is off it says so and comes back by
+  itself when the party starts. **Renew display link** makes open displays stop working
+  (guests are not affected); renewing the guest access changes the display link as well.
+  Heading and text next to the QR code come from **Printed sheet**.
+
 ## 0.2.6
 
 - New: the texts on the printed QR code sheet can be changed. **Guest access → Printed

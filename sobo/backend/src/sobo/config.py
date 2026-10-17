@@ -36,6 +36,10 @@ class AppOptions(BaseModel):
     def secret_path(self) -> Path:
         return self.data_dir / "secret"
 
+    @property
+    def display_key_path(self) -> Path:
+        return self.data_dir / "display_key"
+
     @classmethod
     def load(cls, options_file: Path | None = None) -> AppOptions:
         values: dict[str, object] = {}

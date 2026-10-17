@@ -38,6 +38,7 @@ Security: [`docs/SECURITY.md`](docs/SECURITY.md)
 | `custom_components/sobo/` | HA integration: guest access via webhook/cloudhook, entities |
 | `tests/` | Integration tests (`pytest-homeassistant-custom-component`) |
 | `frontend/guest/` | Guest page sources (build: `scripts/build_guest_page.py`) |
+| `frontend/display/` | Party display sources (TV/tablet, same build script) |
 | `sobo/backend/loadtest/` | Locust scenario (about 100 guests with long polling) |
 
 ## Development
@@ -59,6 +60,7 @@ uv run ruff check src tests && uv run mypy src
 |---|---|
 | Admin UI | `I18N` in `sobo/backend/src/sobo/static/admin/admin.js` |
 | Guest page | `I18N` in `frontend/guest/app.js` (then rebuild the page) |
+| Party display | `I18N` in `frontend/display/app.js` (then rebuild the page) |
 | "Jukebox is off" page | `INACTIVE_TEXTS` in `custom_components/sobo/guest_access.py` |
 | Integration (config flow, entities) | `custom_components/sobo/translations/*.json` |
 | App options | `sobo/translations/*.yaml` |

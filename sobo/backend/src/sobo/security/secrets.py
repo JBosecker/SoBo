@@ -14,6 +14,11 @@ def load_or_create_secret(path: Path) -> str:
         value = path.read_text(encoding="utf-8").strip()
         if len(value) >= 32:
             return value
+    return create_secret(path)
+
+
+def create_secret(path: Path) -> str:
+    """Write a new secret (256 bit) to `path` with file mode 0600, replacing an old one."""
     value = secrets.token_urlsafe(32)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)

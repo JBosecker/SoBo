@@ -17,6 +17,7 @@ from .guest_access import GuestAccess, delete_cloudhook
 
 PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR, Platform.SWITCH]
 GUEST_PAGE = Path(__file__).parent / "guest_page.html"
+DISPLAY_PAGE = Path(__file__).parent / "display_page.html"
 
 
 @dataclass
@@ -30,8 +31,8 @@ class SoboRuntimeData:
 type SoboConfigEntry = ConfigEntry[SoboRuntimeData]
 
 
-def _load_page() -> str:
-    return GUEST_PAGE.read_text(encoding="utf-8")
+def _load_pages() -> tuple[str, str]:
+    return GUEST_PAGE.read_text(encoding="utf-8"), DISPLAY_PAGE.read_text(encoding="utf-8")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SoboConfigEntry) -> bool:
@@ -45,8 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SoboConfigEntry) -> bool
         coordinator = SoboCoordinator(hass, entry, client)
         await coordinator.async_config_entry_first_refresh()
 
-        page = await hass.async_add_executor_job(_load_page)
-        guest_access = GuestAccess(hass, entry, client, page, coordinator)
+        page, display_page = await hass.async_add_executor_job(_load_pages)
+        guest_access = GuestAccess(hass, entry, client, page, coordinator, display_page)
         await guest_access.async_start()
         coordinator.guest_access = guest_access
     except Exception:

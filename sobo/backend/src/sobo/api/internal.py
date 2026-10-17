@@ -88,8 +88,12 @@ async def status(ctx: Ctx) -> dict[str, Any]:
 @router.post("/guest-access", status_code=204)
 async def report_guest_access(body: GuestAccessReport, ctx: Ctx) -> None:
     info = ctx.guest_access
+    before = info.join_url
     info.url, info.local_url, info.cloud_connected = body.url, body.local_url, body.cloud_connected
     info.reported_at = ctx.clock.now()
+    if info.join_url != before:
+        # The party display shows the link as a QR code.
+        ctx.jukebox.notifier.bump()
 
 
 @router.post("/rotated", status_code=204)

@@ -129,10 +129,19 @@ async def rotate(ctx: Ctx, actor: Actor) -> dict[str, Any]:
     return {"generation": ctx.rotation_requested}
 
 
+@router.post("/display/renew", status_code=204)
+async def renew_display(ctx: Ctx, actor: Actor) -> None:
+    ctx.renew_display_key()
+    ctx.jukebox.record(actor, "display_renewed")
+
+
 @router.get("/guest-access/qr.svg")
-async def guest_qr(ctx: Ctx, which: Literal["cloud", "local"] = "cloud") -> Response:
+async def guest_qr(ctx: Ctx, which: Literal["cloud", "local", "display"] = "cloud") -> Response:
     info = ctx.guest_access
-    url = info.url if which == "cloud" else info.local_url
+    if which == "display":
+        url = ctx.display_url
+    else:
+        url = info.url if which == "cloud" else info.local_url
     if not url:
         raise HTTPException(404, detail="no_guest_url")
     return Response(qr_svg(url), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})

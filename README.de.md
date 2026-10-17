@@ -30,6 +30,12 @@ und für Gäste außerhalb deines WLANs Home Assistant Cloud (Nabu Casa).
   „Wieder übernehmen“ wählst.
 - **Gastzugang:** QR-Code zum Aushängen (über „QR-Code drucken“ als A4-Blatt oder PDF),
   Link kopieren, Gastzugang erneuern. Nach dem Erneuern funktionieren alte QR-Codes nicht mehr.
+- **Party-Display:** unter **Gastzugang** das Party-Display einschalten und seinen Link
+  im Browser eines Fernsehers oder Tablets öffnen (oder den QR-Code des Displays mit dem
+  Tablet scannen). Es zeigt live, was läuft, die Warteschlange mit Stimmen und den
+  QR-Code für Gäste, ohne Gästenamen. Auf diesem Bildschirm ist keine Home-Assistant-
+  Anmeldung nötig. **Display-Link erneuern** sperrt Displays aus, die mit dem alten Link
+  offen sind.
 - **Einstellungen:** Lautsprecher und Höchstlautstärke, Apple-Music-Konto,
   Basis-Playlist (eine Playlist aus der Apple-Music-Mediathek dieses Kontos), Stimmen,
   Regeln für Wünsche, Zeitfenster.
@@ -59,7 +65,9 @@ Basis-Playlist beginnt von vorn. Der Verlauf der gespielten Songs bleibt erhalte
 
 Die Admin-Oberfläche ist nur über Home Assistant (Ingress) erreichbar. Gäste
 erreichen ausschließlich die Jukebox-Funktionen über eine Nabu-Casa-Cloudhook-URL,
-die keine Rückschlüsse auf deine Home-Assistant-Adresse zulässt.
+die keine Rückschlüsse auf deine Home-Assistant-Adresse zulässt. Das Party-Display
+nutzt dieselbe URL mit einem eigenen Schlüssel; wer den Display-Link hat, kann nur
+zuschauen, nicht mitmachen.
 
 Technische Details (auf Englisch): [README.md](README.md), [sobo/DOCS.md](sobo/DOCS.md),
 Sicherheits-Checkliste: [docs/SECURITY.md](docs/SECURITY.md).

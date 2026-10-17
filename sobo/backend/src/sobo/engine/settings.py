@@ -80,6 +80,14 @@ class PosterSettings(_Model):
         return value or None
 
 
+class DisplaySettings(_Model):
+    """Party display: current song, queue and QR code on a TV or tablet."""
+
+    enabled: bool = False
+    # Show the presence code next to the QR code (like on the printed sheet).
+    show_code: bool = True
+
+
 class ScheduleSettings(_Model):
     enabled: bool = False
     start: time = time(18, 0)
@@ -104,5 +112,6 @@ class JukeboxSettings(_Model):
     limits: LimitSettings = Field(default_factory=LimitSettings)
     guest_access: GuestAccessSettings = Field(default_factory=GuestAccessSettings)
     poster: PosterSettings = Field(default_factory=PosterSettings)
+    display: DisplaySettings = Field(default_factory=DisplaySettings)
     # time zone for the schedule window
     timezone: str = "Europe/Berlin"

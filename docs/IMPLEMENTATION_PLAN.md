@@ -11,7 +11,7 @@ As of: 05.10.2026 · Version 3 (long polling added for the guest page)
 |---|---|---|---|
 | E1 | Primary music service | **Apple Music** | According to the SoCo fork's `VERIFIED.md`, browse, search, metadata and track playback are verified. This removes the biggest risk from v1. |
 | E2 | Downvotes | **No** | Upvotes only. Ranking and data model become simpler. |
-| E3 | Party display mode | **Not in the MVP** | Moved to the backlog |
+| E3 | Party display mode | **Not in the MVP**, built in 0.3.0 | Moved to the backlog; implemented after the MVP (see `docs/STATUS.md`, deviation 26) |
 | E4 | Guests should not see the Nabu Casa address | **Guest access via Cloudhook (`hooks.nabu.casa`)** | Section 3 is new, with consequences for guest UI, sessions and security |
 | E5 | Live updates of the guest page | **Long polling via the Cloudhook, with automatic fallback to polling** | WebSocket and SSE are not possible via the Cloudhook (sections 3.1 and 4.4) |
 
@@ -135,6 +135,7 @@ sobo/                                  # Git repo = HA app repository
 │   ├── __init__.py, config_flow.py
 │   ├── guest_webhook.py               # webhook/Cloudhook lifecycle + proxy
 │   ├── guest_page.html                # build output from frontend/guest
+│   ├── display_page.html              # build output from frontend/display (0.3.0)
 │   └── switch.py, sensor.py, button.py
 ├── hacs.json
 └── .github/workflows/
@@ -311,7 +312,7 @@ Roughly 6–8 weeks for one person part-time, as a guideline.
 
 ### Backlog (after MVP)
 
-Party display mode (TV/tablet), fairness bonus in ranking, UPnP events instead of polling (Sonos side), real push via an external service (e.g. ntfy/Ably, version signals only, if long polling is not enough), additional music services, post-party statistics.
+~~Party display mode (TV/tablet)~~ (0.3.0), fairness bonus in ranking, UPnP events instead of polling (Sonos side), real push via an external service (e.g. ntfy/Ably, version signals only, if long polling is not enough), additional music services, post-party statistics.
 
 ---
 

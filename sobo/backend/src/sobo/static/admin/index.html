@@ -114,6 +114,32 @@
         </div>
       </div>
     </div>
+    <div class="access-card display-card">
+      <div class="qr-wrap">
+        <img id="display-qr" class="qr" alt="QR code for the party display" data-i18n-attr="alt:display_qr_alt" hidden>
+        <p id="display-qr-missing" class="empty"></p>
+      </div>
+      <div class="access-text">
+        <h2 data-i18n="display_heading">Party display</h2>
+        <p class="muted" data-i18n="display_explain">Shows the current song, the queue and the QR code for guests on a TV or tablet. Open the link in its browser, or scan this code with the tablet.</p>
+        <p class="url-line"><code id="display-url"></code></p>
+        <div class="row">
+          <a class="button" id="display-open" target="_blank" rel="noopener noreferrer" hidden data-i18n="display_open">Open display</a>
+          <button type="button" class="button" id="display-copy" data-i18n="copy_link">Copy link</button>
+        </div>
+        <div class="rotate">
+          <button type="button" class="button danger" id="display-renew" data-i18n="display_renew">Renew display link</button>
+          <div id="display-renew-confirm" class="confirm" hidden>
+            <p data-i18n="display_renew_warning">Open displays stop working and have to be opened again with the new link. Guests are not affected.</p>
+            <div class="row">
+              <button type="button" class="button danger" id="display-renew-yes" data-i18n="rotate_yes">Renew</button>
+              <button type="button" class="button" id="display-renew-no" data-i18n="cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <form class="settings-form" data-section="display" novalidate></form>
     <form class="settings-form" data-section="poster" novalidate></form>
     <form class="settings-form" data-section="guest_access" novalidate></form>
   </section>

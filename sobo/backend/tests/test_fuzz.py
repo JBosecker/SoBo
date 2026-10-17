@@ -16,6 +16,7 @@ import asyncio
 import json
 import random
 import string
+import tempfile
 import urllib.parse
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -25,14 +26,15 @@ from typing import Any
 import pytest
 
 hypothesis = pytest.importorskip("hypothesis")
-from hypothesis import HealthCheck, given, settings  # noqa: E402
+from hypothesis import HealthCheck, assume, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
+from sobo.access import DisplayKey, GuestAccessInfo  # noqa: E402
 from sobo.api.guest_service import MAX_BODY_BYTES, GuestService  # noqa: E402
 from sobo.clock import ManualClock  # noqa: E402
 from sobo.engine.jukebox import Jukebox  # noqa: E402
 from sobo.engine.persistence import MemoryRepository  # noqa: E402
-from sobo.engine.settings import GuestAccessSettings  # noqa: E402
+from sobo.engine.settings import DisplaySettings, GuestAccessSettings  # noqa: E402
 from sobo.security.ratelimit import KeyedRateLimiter, TokenBucket  # noqa: E402
 from sobo.security.sessions import clean_nickname  # noqa: E402
 from sobo.sonos.fake_adapter import FakeSonosAdapter  # noqa: E402
@@ -47,8 +49,20 @@ FUZZ = settings(
 )
 
 ALLOWED_STATUS = {200, 400, 401, 403, 404, 409, 413, 429, 503}
-ACTIONS = ["join", "state", "wait", "search", "suggest", "vote"]
-FIELDS = ["action", "session", "nickname", "code", "since", "timeout", "q", "result", "item"]
+ACTIONS = ["join", "state", "wait", "search", "suggest", "vote", "display"]
+FIELDS = [
+    "action",
+    "session",
+    "nickname",
+    "code",
+    "since",
+    "timeout",
+    "q",
+    "result",
+    "item",
+    "key",
+    "epoch",
+]
 
 
 class Env:
@@ -61,14 +75,25 @@ class Env:
         self.worker = SonosWorker(self.adapter, timeout=5)
         repo = MemoryRepository()
         repo.save_settings(
-            active_settings(guest_access=GuestAccessSettings(max_active_guests=1000))
+            active_settings(
+                guest_access=GuestAccessSettings(max_active_guests=1000),
+                display=DisplaySettings(enabled=True),
+            )
         )
         self.jukebox = Jukebox(self.worker, repo, clock, rng=random.Random(3))
+        self._key_dir = tempfile.TemporaryDirectory()
+        self.display_key = DisplayKey(Path(self._key_dir.name) / "display_key")
         # Generous limits: the fuzzer should reach the actions, not the rate limiter.
         self.service = GuestService(
-            self.jukebox, global_rate=1e9, session_capacity=1e9, session_rate=1e9
+            self.jukebox,
+            global_rate=1e9,
+            session_capacity=1e9,
+            session_rate=1e9,
+            guest_access=GuestAccessInfo(url="https://hooks.nabu.casa/fuzz"),
+            display_key=self.display_key,
         )
         self.service.join_limiter = TokenBucket(capacity=1e9, rate=1e9)
+        self.service.display_limiter = TokenBucket(capacity=1e9, rate=1e9)
         self.service.search_limiter = KeyedRateLimiter(capacity=1e9, rate=1e9)
         self.session = self.call({"action": "join", "nickname": "Fuzz"})[1]["session"]
 
@@ -85,6 +110,7 @@ class Env:
     def close(self) -> None:
         self.worker.shutdown()
         self.loop.close()
+        self._key_dir.cleanup()
 
 
 @contextmanager
@@ -172,9 +198,26 @@ def test_arbitrary_json(env: Env, value: Any) -> None:
 )
 def test_actions_with_random_fields(env: Env, action: str, fields: dict[str, Any]) -> None:
     fields.pop("action", None)
-    if action == "wait" and isinstance(fields.get("timeout"), int):
+    if action in ("wait", "display") and isinstance(fields.get("timeout"), int):
         fields["timeout"] = 5  # keep valid long polls short
     env.call({"action": action, **fields})
+
+
+@FUZZ
+@given(
+    since=st.one_of(st.none(), st.integers(), st.text(max_size=5)),
+    epoch=st.one_of(st.none(), st.text(max_size=40)),
+    timeout=st.one_of(st.none(), st.integers(-5, 100)),
+)
+def test_display_with_valid_key(env: Env, since: Any, epoch: Any, timeout: Any) -> None:
+    # A valid long poll on the current version would wait: the fuzzer wants answers.
+    assume(since != env.jukebox.notifier.version)
+    payload = {"action": "display", "key": env.display_key.value, "since": since, "epoch": epoch}
+    if timeout is not None:
+        payload["timeout"] = timeout
+    status, response = env.call(payload)
+    if status == 200:
+        assert env.display_key.value not in json.dumps(response)
 
 
 @FUZZ

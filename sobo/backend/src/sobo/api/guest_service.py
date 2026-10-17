@@ -14,9 +14,11 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
+from ..access import DisplayKey, GuestAccessInfo
 from ..engine.jukebox import Jukebox, SearchHit
 from ..engine.limits import RuleViolation
 from ..engine.models import Guest
+from ..qr import qr_rows
 from ..security.ratelimit import KeyedRateLimiter, TokenBucket
 from ..security.sessions import clean_nickname, hash_token, new_session_token
 from ..sonos.adapter import SonosError
@@ -74,13 +76,30 @@ class VoteAction(_Action):
     item: str = Field(min_length=1, max_length=64)
 
 
-GuestAction = Annotated[
-    JoinAction | StateAction | WaitAction | SearchAction | SuggestAction | VoteAction,
-    Field(discriminator="action"),
-]
-_ACTION_ADAPTER: TypeAdapter[
-    JoinAction | StateAction | WaitAction | SearchAction | SuggestAction | VoteAction
-] = TypeAdapter(GuestAction)
+class DisplayAction(_Action):
+    """Party display: state right away, or a long poll when `since` is given."""
+
+    action: Literal["display"]
+    key: str = Field(min_length=32, max_length=100)
+    since: int | None = Field(default=None, ge=0, le=2**53)
+    epoch: str | None = Field(default=None, min_length=1, max_length=32)
+    timeout: int | None = Field(default=None, ge=5, le=60)
+
+
+AnyAction = (
+    JoinAction
+    | StateAction
+    | WaitAction
+    | SearchAction
+    | SuggestAction
+    | VoteAction
+    | DisplayAction
+)
+GuestAction = Annotated[AnyAction, Field(discriminator="action")]
+_ACTION_ADAPTER: TypeAdapter[AnyAction] = TypeAdapter(GuestAction)
+
+# Open long polls of party displays; there are only a few screens at a party.
+MAX_OPEN_DISPLAY_POLLS = 10
 
 # Rule violations → HTTP status. Everything else from RuleViolation → 409.
 _STATUS = {
@@ -106,14 +125,22 @@ class GuestService:
         global_rate: float = 100.0,
         session_capacity: float = 20,
         session_rate: float = 2.0,
+        guest_access: GuestAccessInfo | None = None,
+        display_key: DisplayKey | None = None,
     ) -> None:
         self.jb = jukebox
+        self.guest_access = guest_access or GuestAccessInfo()
+        # Without a key (tests, harness without a display) the display stays closed.
+        self.display_key = display_key
         joins = jukebox.settings.guest_access.joins_per_minute
         self.join_limiter = TokenBucket(capacity=joins, rate=joins / 60)
         self.global_limiter = TokenBucket(capacity=global_rate * 2, rate=global_rate)
         self.session_limiter = KeyedRateLimiter(session_capacity, session_rate)
         self.search_limiter = KeyedRateLimiter(capacity=6, rate=0.5)
         self.open_polls: dict[str, asyncio.Event] = {}
+        # All displays share one key, so they share one bucket: a few screens at most.
+        self.display_limiter = TokenBucket(capacity=30, rate=5)
+        self.open_display_polls: set[asyncio.Event] = set()
 
     # ------------------------------------------------------------------ entry point
 
@@ -134,12 +161,11 @@ class GuestService:
             _LOG.warning("Guest action %s: Sonos error %s", action.action, err)
             return _error(503, "sonos_unavailable")
 
-    async def _dispatch(
-        self,
-        action: JoinAction | StateAction | WaitAction | SearchAction | SuggestAction | VoteAction,
-    ) -> Response:
+    async def _dispatch(self, action: AnyAction) -> Response:
         if isinstance(action, JoinAction):
             return self._join(action)
+        if isinstance(action, DisplayAction):
+            return await self._display(action)
         guest = self.jb.guest_for_token(hash_token(action.session))
         if guest is None:
             if not self.jb.effectively_active:
@@ -209,6 +235,56 @@ class GuestService:
         state = self.jb.guest_view(guest)
         return {"ok": True, "changed": True, "version": state["version"], "state": state}
 
+    # ------------------------------------------------------------------ party display
+
+    async def _display(self, action: DisplayAction) -> Response:
+        key = self.display_key
+        if key is None or not self.jb.settings.display.enabled or not key.matches(action.key):
+            # Same answer for "off" and "wrong key": no hint which one it is.
+            return _error(403, "display_denied")
+        if not self.display_limiter.allow():
+            return _error(429, "slow_down", self.display_limiter.retry_after())
+        notifier = self.jb.notifier
+        if (
+            action.since is None
+            or action.since != notifier.version
+            or (action.epoch is not None and action.epoch != notifier.epoch)
+        ):
+            return 200, self._display_changed()
+        if len(self.open_display_polls) >= MAX_OPEN_DISPLAY_POLLS:
+            return 200, {"ok": True, "changed": False, "version": notifier.version, "mode": "poll"}
+        cancel = asyncio.Event()
+        self.open_display_polls.add(cancel)
+        try:
+            limit = self.jb.settings.guest_access.long_poll_timeout
+            changed = await notifier.wait(action.since, min(action.timeout or limit, limit), cancel)
+        finally:
+            self.open_display_polls.discard(cancel)
+        if changed:
+            return 200, self._display_changed()
+        return 200, {"ok": True, "changed": False, "version": notifier.version}
+
+    def _display_changed(self) -> dict[str, Any]:
+        state = self.display_state()
+        return {"ok": True, "changed": True, "version": state["version"], "state": state}
+
+    def display_state(self) -> dict[str, Any]:
+        """Display state plus how to join: QR code, presence code and the poster texts."""
+        state = self.jb.display_view()
+        settings = self.jb.settings
+        url = self.guest_access.join_url
+        if url and state["active"]:
+            join: dict[str, Any] = {"qr": list(qr_rows(url))}
+            code = settings.guest_access.presence_code
+            if code and settings.display.show_code:
+                join["code"] = code
+            if settings.poster.title:
+                join["title"] = settings.poster.title
+            if settings.poster.text:
+                join["text"] = settings.poster.text
+            state["join"] = join
+        return state
+
     async def _search(self, guest: Guest, term: str) -> Response:
         if not self.search_limiter.allow(guest.id):
             return _error(429, "slow_down")
@@ -234,9 +310,13 @@ class GuestService:
             view["blocked"] = hit.blocked
         return view
 
+    def end_display_polls(self) -> None:
+        for cancel in self.open_display_polls:
+            cancel.set()
+
     def reset(self) -> None:
         """After a rotation: end open long polls, reset limits."""
-        for cancel in self.open_polls.values():
+        for cancel in [*self.open_polls.values(), *self.open_display_polls]:
             cancel.set()
         self.session_limiter.reset()
         self.search_limiter.reset()

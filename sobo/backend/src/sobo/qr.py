@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from .vendor.qrcodegen import QrCode
 
 
@@ -26,4 +28,18 @@ def qr_svg(text: str, border: int = 4) -> str:
         'aria-label="QR code">'
         f'<rect width="100%" height="100%" fill="#ffffff"/>'
         f'<path d="{" ".join(parts)}" fill="#000000"/></svg>'
+    )
+
+
+@lru_cache(maxsize=4)
+def qr_rows(text: str) -> tuple[str, ...]:
+    """The modules of the QR code as rows of "1" (dark) and "0" (light), without border.
+
+    For the party display, which draws the code itself: images other than https:
+    are not allowed by its CSP, and binary data does not pass the relay.
+    """
+    qr = QrCode.encode_text(text, QrCode.Ecc.MEDIUM)
+    size = qr.get_size()
+    return tuple(
+        "".join("1" if qr.get_module(x, y) else "0" for x in range(size)) for y in range(size)
     )

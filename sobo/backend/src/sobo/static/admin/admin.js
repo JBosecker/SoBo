@@ -86,6 +86,14 @@
       block_label: "Block {name}",
       unblock_label: "Unblock {name}",
       no_link: "No guest link yet.",
+      display_heading: "Party display",
+      display_explain: "Shows the current song, the queue and the QR code for guests on a TV or tablet. Open the link in its browser, or scan this code with the tablet.",
+      display_qr_alt: "QR code for the party display",
+      display_open: "Open display",
+      display_renew: "Renew display link",
+      display_renew_warning: "Open displays stop working and have to be opened again with the new link. Guests are not affected.",
+      display_renewed: "New display link. Open the display again with it.",
+      display_off: "Turn on the party display below to get its link.",
       explain_no_integration: "The SoBo integration is not connected. Install it via HACS and set it up in Home Assistant under Devices & services.",
       explain_cloud: "Guests scan the QR code with their phone camera. The link works everywhere, even without your Wi-Fi, and reveals nothing about your Home Assistant address.",
       explain_local: "Nabu Casa is not connected. This link only works on your own Wi-Fi.",
@@ -144,6 +152,7 @@
         schedule: ["Time window"],
         guest_access: ["Guest access settings"],
         poster: ["Printed sheet", "Texts above and below the QR code when printing. Leave empty for the default text."],
+        display: ["Party display settings", "Heading and text next to the QR code come from the printed sheet."],
       },
       fields: {
         "speaker.coordinator_uid": ["Speaker"],
@@ -179,6 +188,8 @@
         "guest_access.unregister_when_inactive": ["Turn the guest link off while the jukebox is off"],
         "poster.title": ["Heading"],
         "poster.text": ["Text below the QR code", "Line breaks are kept. The presence code is added below it."],
+        "display.enabled": ["Party display on", "Anyone with the display link sees the current song, the queue and the QR code."],
+        "display.show_code": ["Show the presence code on the display"],
       },
       actions: {
         settings: "Settings changed",
@@ -196,6 +207,7 @@
         manual_override: "Sonos app took over",
         rotate_requested: "Guest access renewal requested",
         rotate_guest_access: "Guest access renewed",
+        display_renewed: "Display link renewed",
       },
     },
     de: {
@@ -277,6 +289,14 @@
       block_label: "{name} sperren",
       unblock_label: "{name} entsperren",
       no_link: "Noch kein Gast-Link.",
+      display_heading: "Party-Display",
+      display_explain: "Zeigt den aktuellen Song, die Warteschlange und den QR-Code für Gäste auf einem Fernseher oder Tablet. Öffne den Link in dessen Browser oder scanne diesen Code mit dem Tablet.",
+      display_qr_alt: "QR-Code für das Party-Display",
+      display_open: "Display öffnen",
+      display_renew: "Display-Link erneuern",
+      display_renew_warning: "Offene Displays funktionieren dann nicht mehr und müssen mit dem neuen Link neu geöffnet werden. Gäste merken davon nichts.",
+      display_renewed: "Neuer Display-Link. Öffne das Display damit noch einmal.",
+      display_off: "Schalte unten das Party-Display ein, um seinen Link zu bekommen.",
       explain_no_integration: "Die SoBo-Integration ist nicht verbunden. Installiere sie über HACS und richte sie in Home Assistant unter Geräte & Dienste ein.",
       explain_cloud: "Gäste scannen den QR-Code mit der Handykamera. Der Link funktioniert überall, auch ohne euer WLAN, und verrät nichts über deine Home-Assistant-Adresse.",
       explain_local: "Nabu Casa ist nicht verbunden. Dieser Link funktioniert nur im eigenen WLAN.",
@@ -335,6 +355,7 @@
         schedule: ["Zeitfenster"],
         guest_access: ["Einstellungen zum Gastzugang"],
         poster: ["Ausdruck", "Texte über und unter dem QR-Code beim Drucken. Leer lassen für den Standardtext."],
+        display: ["Einstellungen zum Party-Display", "Überschrift und Text neben dem QR-Code kommen vom Ausdruck."],
       },
       fields: {
         "speaker.coordinator_uid": ["Lautsprecher"],
@@ -370,6 +391,8 @@
         "guest_access.unregister_when_inactive": ["Gast-Link abschalten, solange die Jukebox aus ist"],
         "poster.title": ["Überschrift"],
         "poster.text": ["Text unter dem QR-Code", "Zeilenumbrüche bleiben erhalten. Der Anwesenheitscode kommt darunter."],
+        "display.enabled": ["Party-Display an", "Wer den Display-Link hat, sieht den aktuellen Song, die Warteschlange und den QR-Code."],
+        "display.show_code": ["Anwesenheitscode auf dem Display zeigen"],
       },
       actions: {
         settings: "Einstellungen geändert",
@@ -387,6 +410,7 @@
         manual_override: "Sonos-App hat übernommen",
         rotate_requested: "Gastzugang-Erneuerung angefordert",
         rotate_guest_access: "Gastzugang erneuert",
+        display_renewed: "Display-Link erneuert",
       },
     },
   };
@@ -822,16 +846,38 @@
     const rotate = $("rotate");
     rotate.disabled = !access.integration_connected || access.rotation_pending;
     rotate.textContent = access.rotation_pending ? t("rotating") : t("rotate");
+    renderDisplay(access, url);
   }
 
-  async function copyUrl() {
-    const text = $("guest-url").textContent;
+  function renderDisplay(access, guestUrl) {
+    const url = access.display_url;
+    const qr = $("display-qr");
+    if (url) {
+      // The key changes with a renewal; the URL in the query string makes the browser reload the image.
+      const src = `api/guest-access/qr.svg?which=display&u=${encodeURIComponent(url)}`;
+      if (qr.getAttribute("src") !== src) qr.src = src;
+      qr.hidden = false;
+      $("display-qr-missing").hidden = true;
+      $("display-open").href = url;
+    } else {
+      qr.hidden = true;
+      $("display-qr-missing").hidden = false;
+      $("display-qr-missing").textContent = guestUrl ? t("display_off") : t("no_link");
+      $("display-open").removeAttribute("href");
+    }
+    $("display-url").textContent = url || "–";
+    $("display-open").hidden = !url;
+    $("display-copy").disabled = !url;
+  }
+
+  async function copyUrl(id = "guest-url") {
+    const text = $(id).textContent;
     try {
       await navigator.clipboard.writeText(text);
       toast(t("link_copied"));
     } catch (err) {
       const range = document.createRange();
-      range.selectNodeContents($("guest-url"));
+      range.selectNodeContents($(id));
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
@@ -898,6 +944,10 @@
       { path: "guest_access.max_open_long_polls", type: "number", min: 1, max: 2000 },
       { path: "guest_access.show_covers", type: "checkbox" },
       { path: "guest_access.unregister_when_inactive", type: "checkbox" },
+    ],
+    display: [
+      { path: "display.enabled", type: "checkbox" },
+      { path: "display.show_code", type: "checkbox" },
     ],
     poster: [
       { path: "poster.title", type: "text", nullable: true, maxlength: 100, placeholder: "print_title", wide: true },
@@ -1216,7 +1266,15 @@
     );
     $("skip").addEventListener("click", () => act("POST", "api/skip", undefined, t("skipped")));
     $("freeze").addEventListener("click", () => act("POST", "api/freeze", { frozen: !status.frozen }));
-    $("copy-url").addEventListener("click", copyUrl);
+    $("copy-url").addEventListener("click", () => copyUrl("guest-url"));
+    $("display-copy").addEventListener("click", () => copyUrl("display-url"));
+    $("display-renew").addEventListener("click", () => { $("display-renew-confirm").hidden = false; $("display-renew").hidden = true; });
+    $("display-renew-no").addEventListener("click", () => { $("display-renew-confirm").hidden = true; $("display-renew").hidden = false; });
+    $("display-renew-yes").addEventListener("click", async () => {
+      $("display-renew-confirm").hidden = true;
+      $("display-renew").hidden = false;
+      await act("POST", "api/display/renew", undefined, t("display_renewed"));
+    });
     $("print").addEventListener("click", printSheet);
     $("rotate").addEventListener("click", () => { $("rotate-confirm").hidden = false; $("rotate").hidden = true; });
     $("rotate-no").addEventListener("click", () => { $("rotate-confirm").hidden = true; $("rotate").hidden = false; });

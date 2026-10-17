@@ -44,6 +44,8 @@ _LOG = logging.getLogger(__name__)
 
 SEARCH_RESULTS = 20
 GUEST_QUEUE_LIMIT = 30
+# Songs the party display gets (requests first, then the base playlist)
+DISPLAY_QUEUE_LIMIT = 12
 # Base playlist tracks shown after the requests (guest page and admin UI)
 # Upper bound for the base playlist preview ("all" songs), like the playlist length.
 MAX_FALLBACK_PREVIEW = 500
@@ -913,6 +915,55 @@ class Jukebox:
             if guest.blocked:
                 me["blocked"] = True
             view["me"] = me
+        return view
+
+    def display_view(self) -> dict[str, Any]:
+        """State for the party display: like the guest page, without a guest.
+
+        Only the first `DISPLAY_QUEUE_LIMIT` songs: a TV shows a handful of rows, and
+        the base playlist fills up to that number once the requests are through.
+        """
+        covers = self.settings.guest_access.show_covers
+        view: dict[str, Any] = {
+            "version": self.notifier.version,
+            "epoch": self.notifier.epoch,
+            "active": self.effectively_active,
+            "state": self.state.value,
+            "frozen": self.frozen,
+        }
+        current = self.queue.playing
+        if current is not None and self.state != JukeboxState.MANUAL_OVERRIDE:
+            now_playing = self._track_view(current.track, covers)
+            if self.last_status and self.last_status.position is not None:
+                now_playing["position"] = round(self.last_status.position)
+            view["now_playing"] = now_playing
+        nxt = self.queue.next_item
+        if nxt is not None:
+            next_view = self._track_view(nxt.track, covers)
+            next_view["votes"] = nxt.votes
+            if nxt.origin == Origin.FALLBACK:
+                next_view["fallback"] = True
+            view["next"] = next_view
+        waiting = self.queue.waiting()
+        entries = []
+        for item in waiting[:DISPLAY_QUEUE_LIMIT]:
+            entry = self._track_view(item.track, covers)
+            entry["votes"] = item.votes
+            if item.pinned:
+                entry["pinned"] = True
+            entries.append(entry)
+        room = min(DISPLAY_QUEUE_LIMIT - len(entries), self._preview_count())
+        if room > 0 and self._fallback is not None:
+            # Not through fallback_preview(): that would shrink the preview the guests
+            # vote on to these few songs.
+            exclude = {song_key(i.track) for i in self.queue if i.is_open}
+            for track in self._fallback.upcoming(room, exclude):
+                entry = self._track_view(track, covers)
+                entry["votes"] = 0
+                entry["fallback"] = True
+                entries.append(entry)
+        view["queue"] = entries
+        view["requests"] = len(waiting)
         return view
 
     def _admin_item(self, item: QueueItem) -> dict[str, Any]:

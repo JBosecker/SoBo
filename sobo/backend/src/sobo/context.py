@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
+from .access import DisplayKey, GuestAccessInfo
 from .api.guest_service import GuestService
 from .clock import Clock, ScaledClock, SystemClock
 from .config import AppOptions
@@ -22,14 +23,7 @@ _LOG = logging.getLogger(__name__)
 INTEGRATION_TIMEOUT = timedelta(seconds=60)
 
 
-@dataclass
-class GuestAccessInfo:
-    """Guest access state as reported by the integration (plan 3.3)."""
-
-    url: str | None = None
-    local_url: str | None = None
-    cloud_connected: bool | None = None
-    reported_at: datetime | None = None
+__all__ = ["AppContext", "GuestAccessInfo"]
 
 
 @dataclass
@@ -41,6 +35,7 @@ class AppContext:
     guest_service: GuestService
     scheduler: Scheduler
     secret: str
+    display_key: DisplayKey
     guest_access: GuestAccessInfo = field(default_factory=GuestAccessInfo)
     # A counter instead of a callback: the integration polls /internal/status and
     # rotates as soon as the counter increases.
@@ -73,14 +68,18 @@ class AppContext:
             repo = SqlRepository.for_path(options.db_path, clock)
         worker = SonosWorker(adapter)
         jukebox = Jukebox(worker, repo, clock)
+        guest_access = GuestAccessInfo()
+        display_key = DisplayKey(options.display_key_path)
         return cls(
             options=options,
             clock=clock,
             worker=worker,
             jukebox=jukebox,
-            guest_service=GuestService(jukebox),
+            guest_service=GuestService(jukebox, guest_access=guest_access, display_key=display_key),
             scheduler=Scheduler(jukebox, options.poll_interval),
             secret=load_or_create_secret(options.secret_path),
+            display_key=display_key,
+            guest_access=guest_access,
         )
 
     def start(self) -> None:
@@ -106,4 +105,18 @@ class AppContext:
             "local_url": info.local_url,
             "cloud_connected": info.cloud_connected,
             "rotation_pending": self.rotation_requested > self.rotation_done,
+            "display_url": self.display_url,
         }
+
+    @property
+    def display_url(self) -> str | None:
+        """Link for the party display; None while it is off or no guest link is known."""
+        join_url = self.guest_access.join_url
+        if not self.jukebox.settings.display.enabled or not join_url:
+            return None
+        return self.display_key.url(join_url)
+
+    def renew_display_key(self) -> None:
+        self.display_key.renew()
+        # Open displays get their next answer now and find the old key rejected.
+        self.guest_service.end_display_polls()
