@@ -184,6 +184,13 @@ def test_settings_validation() -> None:
         JukeboxSettings.model_validate({"unbekannt": True})
     settings = JukeboxSettings.model_validate({"limits": {"blocklist": ["  x ", "", "y"]}})
     assert settings.limits.blocklist == ["x", "y"]
+    with pytest.raises(ValidationError):
+        JukeboxSettings.model_validate({"poster": {"title": "x" * 101}})
+    settings = JukeboxSettings.model_validate(
+        {"poster": {"title": "  ", "text": " Line 1\nLine 2 "}}
+    )
+    assert settings.poster.title is None
+    assert settings.poster.text == "Line 1\nLine 2"
 
 
 def test_item_open_states() -> None:

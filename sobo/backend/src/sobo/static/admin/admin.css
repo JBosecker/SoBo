@@ -199,6 +199,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
   .print-sheet { display: grid !important; justify-items: center; gap: 10mm; text-align: center; color: #000; }
   .print-sheet h1 { font: 700 34pt/1.1 var(--condensed); }
   .print-sheet img { width: 120mm; height: 120mm; }
+  .print-sheet h1, .print-steps { white-space: pre-line; overflow-wrap: anywhere; }
   .print-steps { font-size: 16pt; max-width: 150mm; }
   .print-code { font-size: 20pt; font-weight: 700; }
 }

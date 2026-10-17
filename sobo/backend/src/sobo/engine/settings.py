@@ -65,6 +65,21 @@ class GuestAccessSettings(_Model):
     unregister_when_inactive: bool = False
 
 
+class PosterSettings(_Model):
+    """Texts on the printed QR code sheet; empty uses the default text of the UI language."""
+
+    title: str | None = Field(default=None, max_length=100)
+    text: str | None = Field(default=None, max_length=600)
+
+    @field_validator("title", "text")
+    @classmethod
+    def _empty_is_default(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+
 class ScheduleSettings(_Model):
     enabled: bool = False
     start: time = time(18, 0)
@@ -88,5 +103,6 @@ class JukeboxSettings(_Model):
     votes: VoteSettings = Field(default_factory=VoteSettings)
     limits: LimitSettings = Field(default_factory=LimitSettings)
     guest_access: GuestAccessSettings = Field(default_factory=GuestAccessSettings)
+    poster: PosterSettings = Field(default_factory=PosterSettings)
     # time zone for the schedule window
     timezone: str = "Europe/Berlin"

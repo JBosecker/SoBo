@@ -114,6 +114,7 @@
         </div>
       </div>
     </div>
+    <form class="settings-form" data-section="poster" novalidate></form>
     <form class="settings-form" data-section="guest_access" novalidate></form>
   </section>
 
@@ -137,9 +138,9 @@
 
 <!-- Only visible when printing -->
 <section class="print-sheet" aria-hidden="true">
-  <h1 data-i18n="print_title">Request a song!</h1>
+  <h1 id="print-title" data-i18n="print_title">Request a song!</h1>
   <img id="print-qr" alt="">
-  <p class="print-steps" data-i18n="print_steps">Scan with your phone camera, enter a name, search for a song and suggest it.</p>
+  <p id="print-steps" class="print-steps" data-i18n="print_steps">Scan with your phone camera, enter a name, search for a song and suggest it.</p>
   <p id="print-code" class="print-code" hidden></p>
 </section>
 
