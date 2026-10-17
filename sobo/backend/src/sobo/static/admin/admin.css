@@ -154,6 +154,10 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px; }
 .qr-wrap { display: grid; place-items: center; background: #fff; border-radius: 8px; min-height: 260px; }
 .qr { width: 100%; max-width: 260px; image-rendering: pixelated; }
 .access-text { display: grid; gap: 12px; align-content: start; }
+.display-card { margin-top: 20px; }
+.display-card .qr-wrap { min-height: 200px; }
+.display-card .qr { max-width: 200px; }
+a.button { text-decoration: none; display: inline-block; color: inherit; }
 .url-line code { font-size: 13px; overflow-wrap: anywhere; background: var(--bg); padding: 6px 8px; border-radius: 6px; display: inline-block; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 14px; }
 .facts dt { color: var(--muted); }

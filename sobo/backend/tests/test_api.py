@@ -250,3 +250,49 @@ async def test_admin_rejects_requests_without_csrf_header(
         # Reading stays possible without the header.
         assert (await plain.get("/api/status")).status_code == 200
     assert ctx.jukebox.settings.active is True
+
+
+# --------------------------------------------------------------------------- Party display
+
+
+async def test_display_link_renewal_and_qr(ctx: AppContext) -> None:
+    async with admin_client(ctx) as client:
+        status = (await client.get("/api/status")).json()
+        assert status["guest_access"]["display_url"] is None
+        assert (await client.get("/api/guest-access/qr.svg?which=display")).status_code == 404
+        ctx.guest_access.url = "https://hooks.nabu.casa/abc"
+        settings = (await client.get("/api/settings")).json()
+        assert settings["display"] == {"enabled": False, "show_code": True}
+        settings["display"]["enabled"] = True
+        assert (await client.put("/api/settings", json=settings)).status_code == 200
+        url = (await client.get("/api/status")).json()["guest_access"]["display_url"]
+        assert url == f"https://hooks.nabu.casa/abc?view=display#key={ctx.display_key.value}"
+        qr = await client.get("/api/guest-access/qr.svg?which=display")
+        assert qr.status_code == 200 and qr.text.startswith("<svg")
+
+        assert (await client.post("/api/display/renew")).status_code == 204
+        renewed = (await client.get("/api/status")).json()["guest_access"]["display_url"]
+        assert renewed != url and renewed.endswith(ctx.display_key.value)
+        audit = (await client.get("/api/audit")).json()
+        assert audit[0]["action"] == "display_renewed"
+    mode = ctx.options.display_key_path.stat().st_mode & 0o777
+    assert mode == 0o600
+
+
+async def test_display_action_through_the_internal_api(ctx: AppContext) -> None:
+    settings = ctx.jukebox.settings.model_copy(deep=True)
+    settings.display.enabled = True
+    await ctx.jukebox.update_settings(settings, "test")
+    async with internal_client(ctx) as client:
+        body = {"action": "display", "key": ctx.display_key.value}
+        response = await client.post("/internal/guest", json=body)
+        assert response.status_code == 200
+        assert "join" not in response.json()["state"]  # no guest link reported yet
+        version = ctx.jukebox.notifier.version
+        await client.post("/internal/guest-access", json={"url": "https://hooks.nabu.casa/abc"})
+        # A new link changes the QR code on the display: wake it up.
+        assert ctx.jukebox.notifier.version == version + 1
+        response = await client.post("/internal/guest", json=body)
+        assert "qr" in response.json()["state"]["join"]
+        await client.post("/internal/guest-access", json={"url": "https://hooks.nabu.casa/abc"})
+        assert ctx.jukebox.notifier.version == version + 1  # same link: no wake-up

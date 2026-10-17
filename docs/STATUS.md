@@ -1,6 +1,6 @@
 # SoBo – Implementation status
 
-As of: 2026-10-05
+As of: 2026-10-17
 
 ## Done
 
@@ -15,14 +15,17 @@ As of: 2026-10-05
 | 6 – Release v0.1 (prepared) | Version 0.1.0 everywhere, changelog; release workflow (build per architecture, push to GHCR, multi-arch image `ghcr.io/jbosecker/sobo`, Cosign signing and verification, version check against the tag); `image` in `config.yaml`; app icon/logo and local brand images for the integration; installation instructions; release guide incl. first real test in [`docs/RELEASE.md`](RELEASE.md) | ◐ owner steps open |
 | – Language | English is the main language of the repository (code, comments, docs, commits). Admin UI, guest page, "jukebox is off" page, integration and app options are localized in English and German | ✔ |
 
+| 0.3.0 – Party display | Backlog item "party display mode (TV/tablet)": display page (`frontend/display`, built into `custom_components/sobo/display_page.html`), `display` guest action with its own key and long polling, admin card with link, QR code and renewal, settings section `display` | ✔ |
+
 ## Tests
 
 | Area | Where | Result |
 |---|---|---|
-| Backend (engine, adapters, guest/admin API, store, QR, fuzzing, load, container config) | `sobo/backend/tests` | 177 passed |
-| Guest page in the browser (Playwright/Chromium), incl. German locale | `sobo/backend/tests/test_guest_page.py` | 12 passed |
-| Admin UI in the browser, incl. German locale and fallback language | `sobo/backend/tests/test_admin_page.py` | 9 passed |
-| Integration (`pytest-homeassistant-custom-component`) | `tests/` | 29 passed (CI) |
+| Backend (engine, adapters, guest/admin API, party display, store, QR, fuzzing, load, container config) | `sobo/backend/tests` | 231 passed |
+| Guest page in the browser (Playwright/Chromium), incl. German locale | `sobo/backend/tests/test_guest_page.py` | 16 passed |
+| Admin UI in the browser, incl. German locale and fallback language | `sobo/backend/tests/test_admin_page.py` | 14 passed |
+| Party display in the browser (TV and portrait tablet, German locale, key renewal) | `sobo/backend/tests/test_display_page.py` | 10 passed |
+| Integration (`pytest-homeassistant-custom-component`) | `tests/` | 31 passed |
 
 ```bash
 # Backend
@@ -34,10 +37,10 @@ uv run pytest -p anyio && uv run mypy src && uv run ruff check src tests
 uv venv -p 3.14 .venv-ha && source .venv-ha/bin/activate
 uv pip install -r requirements_test.txt && pytest
 
-# Rebuild the guest page after changes in frontend/guest
+# Rebuild the guest page and the party display after changes in frontend/
 python3 scripts/build_guest_page.py
 # To look at it with a simulated Sonos (in sobo/backend):
-uv run python -m tests.guest_harness   # guest page: http://127.0.0.1:8740/g/demo
+uv run python -m tests.guest_harness   # guest page: http://127.0.0.1:8740/g/demo (prints the display link)
 uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 ```
 
@@ -117,6 +120,19 @@ uv run python -m tests.admin_harness   # admin UI:   http://127.0.0.1:8741/
 25. **Base playlist from the Apple Music library** of the selected account (found by
     walking Apple's SMAPI tree through library/playlist folders) instead of Sonos
     playlists and favourites; older source IDs keep working.
+26. **Party display** (backlog item, 0.3.0) through the guest link instead of a page of
+    its own: the integration serves `display_page.html` for `?view=display`, so there is
+    still exactly one public endpoint and the screen needs no HA login. The display has
+    no guest session; it sends a 256-bit key (`/data/display_key`, file mode `0600`) with
+    `action: "display"`. The key travels in the URL fragment (`#key=…`), which browsers
+    never send, so neither the relay nor HA logs it. Wrong key and switched-off display
+    get the same `403 display_denied`. All displays share one token bucket and at most
+    10 open long polls; beyond that they poll. The display state carries the queue (first
+    12 songs, no nicknames, no item IDs) and, while the jukebox is on and a guest link is
+    known, the QR code as rows of modules (the page draws it on a canvas: its CSP allows
+    no `data:` images, and binary data does not pass the relay), the presence code
+    (setting `display.show_code`) and the poster texts. A new guest link bumps the version
+    counter so open displays redraw the QR code. Renewing the key ends open display polls.
 
 ## Security details
 

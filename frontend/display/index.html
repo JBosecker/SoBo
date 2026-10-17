@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+<!-- No referrer to the cover CDN: the page URL is the access key. -->
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1e2433">
+<title>Jukebox</title>
+<style>{{STYLE}}</style>
+</head>
+<body>
+<!-- Party display for a TV or tablet. Texts are English by default; app.js swaps in
+     the browser language (data-i18n). The key comes from the URL fragment (#key=…). -->
+<main id="app">
+
+  <section id="view-loading" class="view center">
+    <p class="quiet" data-i18n="connecting">Connecting to the jukebox …</p>
+  </section>
+
+  <section id="view-denied" class="view center" hidden>
+    <h1 data-i18n="denied_title">This display link does not work (any more).</h1>
+    <p class="quiet" data-i18n="denied_text">Open the party display again from the SoBo page in Home Assistant (Guest access).</p>
+  </section>
+
+  <section id="view-off" class="view center" hidden>
+    <h1 data-i18n="off_title">The jukebox is off right now.</h1>
+    <p class="quiet" data-i18n="off_text">This screen comes back by itself as soon as the party starts.</p>
+  </section>
+
+  <section id="view-main" class="view stage" hidden>
+    <section class="now" id="now" aria-live="polite">
+      <div class="cover"><img id="now-art" alt="" hidden></div>
+      <div class="now-text">
+        <p id="now-label" class="label" data-i18n="now_label">Now playing</p>
+        <h1 id="now-title" data-i18n="nothing_yet">Nothing yet</h1>
+        <p id="now-artist" class="now-artist"></p>
+        <div class="progress" aria-hidden="true"><span id="now-bar"></span></div>
+      </div>
+    </section>
+
+    <section class="queue" aria-labelledby="queue-title">
+      <div class="queue-head">
+        <h2 id="queue-title" data-i18n="queue_title">Coming up</h2>
+        <span id="frozen" class="pill quiet-pill" hidden data-i18n="frozen">Queue paused</span>
+      </div>
+      <p id="queue-empty" class="quiet" hidden data-i18n="queue_empty">No requests yet. Scan the code and suggest the first song!</p>
+      <ol id="queue-list" class="rows"></ol>
+    </section>
+
+    <aside class="join" id="join" hidden>
+      <h2 id="join-title" class="join-title" data-i18n="join_title">Request a song!</h2>
+      <div class="qr-card"><canvas id="qr" role="img" aria-label="QR code" data-i18n-attr="aria-label:qr_label"></canvas></div>
+      <div class="join-text">
+        <p id="join-text" class="join-steps" data-i18n="join_text">Scan with your phone camera, enter a name, search for a song and suggest it.</p>
+        <p id="join-code" class="join-code" hidden></p>
+      </div>
+    </aside>
+  </section>
+
+  <button type="button" id="fullscreen" class="fullscreen" hidden data-i18n="fullscreen">Full screen</button>
+</main>
+<script>{{SCRIPT}}</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 """Public guest entry point: webhook + Nabu Casa cloudhook (plan 3).
 
-* GET  → self-contained guest page (or a neutral "jukebox is off" page)
+* GET  → self-contained guest page (or a neutral "jukebox is off" page);
+         with `?view=display` the party display page for a TV or tablet
 * POST → JSON action, forwarded unchanged to the app
 
 Through the cloudhook relay only status, body (text) and `Content-Type` arrive.
@@ -133,12 +134,14 @@ class GuestAccess:
         client: SoboClient,
         page_html: str,
         coordinator: SoboCoordinator,
+        display_html: str = "",
     ) -> None:
         self.hass = hass
         self.entry = entry
         self.client = client
         self.coordinator = coordinator
         self._page = page_html
+        self._display = display_html
         self._inactive = {lang: _inactive_page(lang) for lang in INACTIVE_TEXTS}
         self.state = GuestAccessState()
         self._registered = False
@@ -273,7 +276,12 @@ class GuestAccess:
     def _page_response(self, request: web.Request) -> web.Response:
         data = self.coordinator.data or {}
         active = bool(data.get("effectively_active")) and self.coordinator.last_update_success
-        if active:
+        query = getattr(request, "query", None) or {}
+        if query.get("view") == "display" and self._display:
+            # The display stays on all evening and shows "off" itself; its key travels
+            # in the URL fragment and only reaches the app in the POST body.
+            html = self._display
+        elif active:
             # The guest page picks its language itself (navigator.languages).
             html = self._page
         else:

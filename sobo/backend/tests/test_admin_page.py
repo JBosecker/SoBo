@@ -229,6 +229,30 @@ def test_guest_access_and_rotation(browser: Browser, harness: tuple[AdminHarness
     expect(page.locator(".topbar")).to_be_hidden()
 
 
+def test_party_display_link(browser: Browser, harness: tuple[AdminHarness, str]) -> None:
+    h, url = harness
+    page = open_admin(browser, url, "access")
+    expect(page.locator("#display-qr-missing")).to_contain_text("Turn on the party display")
+    expect(page.locator("#display-open")).to_be_hidden()
+    expect(page.locator("#display-copy")).to_be_disabled()
+
+    page.check("#f-display-enabled")
+    page.locator('.settings-form[data-section="display"] button[type=submit]').click()
+    link = f"{CLOUD_URL}?view=display#key={h.ctx.display_key.value}"
+    expect(page.locator("#display-url")).to_have_text(link, timeout=8000)
+    expect(page.locator("#display-open")).to_have_attribute("href", link)
+    expect(page.locator("#display-open")).to_have_attribute("rel", "noopener noreferrer")
+    expect(page.locator("#display-qr")).to_be_visible()
+    assert h.ctx.jukebox.settings.display.enabled is True
+
+    page.click("#display-renew")
+    expect(page.locator("#display-renew-confirm")).to_contain_text("Guests are not affected")
+    page.click("#display-renew-yes")
+    expect(page.locator("#display-url")).not_to_have_text(link, timeout=8000)
+    expect(page.locator("#display-url")).to_contain_text(h.ctx.display_key.value)
+    assert page.evaluate("window.__csp") == []
+
+
 def test_custom_print_texts(browser: Browser, harness: tuple[AdminHarness, str]) -> None:
     h, url = harness
     page = open_admin(browser, url, "access")
