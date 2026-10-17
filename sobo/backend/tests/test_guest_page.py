@@ -142,6 +142,33 @@ def test_new_search_does_not_show_previous_results(
     expect(page.locator("#results-list li", has_text="Velvet Engine")).to_be_visible()
 
 
+def test_search_typed_during_a_suggestion_stays(
+    browser: Browser, harness: tuple[Harness, str]
+) -> None:
+    _, url = harness
+    page = open_page(browser, url)
+    join(page, "Mia")
+    held: list[Route] = []
+
+    def hold_suggest(route: Route) -> None:
+        if b'"suggest"' in (route.request.post_data_buffer or b""):
+            held.append(route)
+        else:
+            route.continue_()
+
+    page.route("**/*", hold_suggest)
+    page.fill("#search", "comet")
+    page.locator("#results-list li", has_text="Slow Comet").locator("button").click()
+    while not held:
+        page.wait_for_timeout(50)
+    page.fill("#search", "velvet")
+    for route in held:
+        route.continue_()
+    expect(page.locator("#toast")).to_contain_text("Suggested")
+    expect(page.locator("#search")).to_have_value("velvet")
+    expect(page.locator("#results-list li", has_text="Velvet Engine")).to_be_visible()
+
+
 def test_xss_in_nickname_is_rendered_as_text(
     browser: Browser, harness: tuple[Harness, str]
 ) -> None:

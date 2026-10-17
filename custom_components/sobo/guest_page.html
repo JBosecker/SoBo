@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uC5TnfdiTqJQXkhR68vR+b2jDxg+Amb2iGZq1d5BLQg='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1T+rqst60lw9tX/0Ii1WXeVd3SsdtkncuJEsPfy8M0s='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -690,10 +690,12 @@ input:focus { border-color: var(--amber); outline: none; }
 
   async function suggest(resultId, button) {
     button.disabled = true;
+    const query = $("search").value;
     try {
       const body = await api(withSession({ action: "suggest", result: resultId }));
       applyState(body.state);
-      closeSearch();
+      // Leave a search alone that the guest started while the request was on its way.
+      if ($("search").value === query) closeSearch();
       toast(t("suggested"));
     } catch (err) {
       handleError(err);

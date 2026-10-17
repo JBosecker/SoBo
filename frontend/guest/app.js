@@ -445,10 +445,12 @@
 
   async function suggest(resultId, button) {
     button.disabled = true;
+    const query = $("search").value;
     try {
       const body = await api(withSession({ action: "suggest", result: resultId }));
       applyState(body.state);
-      closeSearch();
+      // Leave a search alone that the guest started while the request was on its way.
+      if ($("search").value === query) closeSearch();
       toast(t("suggested"));
     } catch (err) {
       handleError(err);
