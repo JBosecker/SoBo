@@ -229,6 +229,31 @@ def test_guest_access_and_rotation(browser: Browser, harness: tuple[AdminHarness
     expect(page.locator(".topbar")).to_be_hidden()
 
 
+def test_custom_print_texts(browser: Browser, harness: tuple[AdminHarness, str]) -> None:
+    h, url = harness
+    page = open_admin(browser, url, "access")
+    title = page.locator("#f-poster-title")
+    expect(title).to_have_attribute("placeholder", "Request a song!")
+    title.fill("Anna's 30th")
+    page.fill("#f-poster-text", "Scan me!\nOne song per guest, please.")
+    page.locator("form[data-section=poster] button[type=submit]").click()
+    expect(page.locator("form[data-section=poster] .status")).to_have_text("Saved.")
+    assert h.ctx.jukebox.settings.poster.title == "Anna's 30th"
+    assert h.ctx.jukebox.settings.poster.text == "Scan me!\nOne song per guest, please."
+
+    page.evaluate("window.print = () => {}")
+    page.click("#print")
+    expect(page.locator("#print-title")).to_have_text("Anna's 30th")
+    expect(page.locator("#print-steps")).to_have_text("Scan me!\nOne song per guest, please.")
+
+    # Emptied again: back to the default text
+    title.fill("")
+    page.locator("form[data-section=poster] button[type=submit]").click()
+    expect(page.locator("form[data-section=poster] .status")).to_have_text("Saved.")
+    page.click("#print")
+    expect(page.locator("#print-title")).to_have_text("Request a song!")
+
+
 def test_without_integration(browser: Browser, tmp_path: Path) -> None:
     h = create_admin_harness(tmp_path, integration=False)
     with serve(h) as url:

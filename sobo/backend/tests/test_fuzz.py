@@ -105,8 +105,18 @@ def check_response(status: int, response: dict[str, Any]) -> None:
     if status != 200:
         assert response.get("ok") is False
         assert isinstance(response.get("error"), str)
+    # Nicknames are typed by guests and may contain anything, e.g. "RINCON_".
+    scanned = json.dumps(_without_nicknames(response), ensure_ascii=False)
     for leak in ("x-sonos", "x-rincon", "RINCON_", "token_hash", "fake_playlist"):
-        assert leak not in text, leak
+        assert leak not in scanned, leak
+
+
+def _without_nicknames(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: None if k == "nickname" else _without_nicknames(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_without_nicknames(v) for v in value]
+    return value
 
 
 json_values = st.recursive(
