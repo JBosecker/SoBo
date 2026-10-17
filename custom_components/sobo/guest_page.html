@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1T+rqst60lw9tX/0Ii1WXeVd3SsdtkncuJEsPfy8M0s='; style-src 'sha256-/Vxr+Ub8wZmHyM0pi4zk3udktjN7METGMTN5d2sGdRE='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vQYn84WrZ5MkTtTf7EAr0dl0uoVTUMCh780C0nWQtq4='; style-src 'sha256-FXq8JmuvS78wLSdZGm0qRwhbTUUGWG+vxQwl17fLH6c='; img-src https:; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <!-- No referrer to the cover CDN: the page URL is the access key. -->
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
@@ -159,6 +159,21 @@ input:focus { border-color: var(--amber); outline: none; }
 
 .results { margin-bottom: 26px; }
 .results .quiet { margin: 4px 0 10px; }
+/* Search hits: the title may take two lines, the album gives way before the artist,
+   and a tap on the text shows everything. */
+.results .row-text { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.results .row-title {
+  white-space: normal; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+}
+.results .row-sub { display: flex; text-overflow: clip; }
+.results .row-artist,
+.results .row-album { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results .row-artist { flex: 0 0 auto; max-width: 100%; }
+.results .row.expanded .row-title { display: block; }
+.results .row.expanded .row-sub { display: block; white-space: normal; overflow-wrap: anywhere; }
+.results .row.expanded .row-artist,
+.results .row.expanded .row-album { white-space: normal; overflow: visible; }
 
 .queue-title { font: 700 20px/1.2 var(--condensed); margin: 8px 0 4px; }
 .playlist-title { margin-top: 24px; }
@@ -772,7 +787,27 @@ input:focus { border-color: var(--amber); outline: none; }
 
   function resultRow(hit) {
     const li = row(hit, "", null);
-    if (hit.album) li.querySelector(".row-sub").append(document.createTextNode(` · ${hit.album}`));
+    const text = li.querySelector(".row-text");
+    const sub = text.querySelector(".row-sub");
+    // Artist and album as separate spans so the album is shortened first (style.css).
+    sub.replaceChildren(el("span", "row-artist", hit.artist || ""));
+    if (hit.album) sub.append(el("span", "row-album", `\u00a0· ${hit.album}`));
+    // Long names are clamped; a tap on the text shows them in full.
+    text.title = [hit.title, hit.artist, hit.album].filter(Boolean).join(" – ");
+    text.setAttribute("role", "button");
+    text.tabIndex = 0;
+    text.setAttribute("aria-expanded", "false");
+    const toggle = () => {
+      const open = li.classList.toggle("expanded");
+      text.setAttribute("aria-expanded", String(open));
+    };
+    text.addEventListener("click", toggle);
+    text.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
     let button;
     if (hit.queued) {
       const queued = (state.queue || []).find((q) => q.id === hit.queued);

@@ -148,6 +148,21 @@ input:focus { border-color: var(--amber); outline: none; }
 
 .results { margin-bottom: 26px; }
 .results .quiet { margin: 4px 0 10px; }
+/* Search hits: the title may take two lines, the album gives way before the artist,
+   and a tap on the text shows everything. */
+.results .row-text { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.results .row-title {
+  white-space: normal; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+}
+.results .row-sub { display: flex; text-overflow: clip; }
+.results .row-artist,
+.results .row-album { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results .row-artist { flex: 0 0 auto; max-width: 100%; }
+.results .row.expanded .row-title { display: block; }
+.results .row.expanded .row-sub { display: block; white-space: normal; overflow-wrap: anywhere; }
+.results .row.expanded .row-artist,
+.results .row.expanded .row-album { white-space: normal; overflow: visible; }
 
 .queue-title { font: 700 20px/1.2 var(--condensed); margin: 8px 0 4px; }
 .playlist-title { margin-top: 24px; }
